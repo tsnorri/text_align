@@ -62,6 +62,10 @@ class AlignmentGraphBuilder(object):
 		lhs_it = iter(lhs)
 		rhs_it = iter(rhs)
 		
+		# At a given aligned index, if both lhs and rhs have the same character,
+		# append it to a graph node that represents a common segment.
+		# Otherwise, append the characters to a graph node that represents
+		# distinct segments.
 		for lhs_has_gap, rhs_has_gap in zip(lhs_gaps, rhs_gaps):
 			assert not (lhs_has_gap and rhs_has_gap)
 			if not (lhs_has_gap or rhs_has_gap):

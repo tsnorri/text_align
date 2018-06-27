@@ -79,6 +79,7 @@ cdef class SmithWatermanAlignmentContext(AlignmentContext):
 	def __cinit__(self):
 		# In-place construction does not seem to be possible in Cython;
 		# hence the use of operator new.
+		# Apparently super's implementation is called automatically.
 		self.ctx = new smith_waterman_alignment_context[int32_t]()
 	
 	def __dealloc__(self):
@@ -87,9 +88,11 @@ cdef class SmithWatermanAlignmentContext(AlignmentContext):
 		del self.ctx
 	
 	def align(self):
+		"""Align self.lhs and self.rhs."""
 		run_aligner(self.ctx[0], self.lhs, self.rhs)
 	
 	def make_alignment_graph(self):
+		"""Return the optimal alignment as a graph."""
 		builder = AlignmentGraphBuilder()
 		return builder.build_graph(
 			self.lhs,

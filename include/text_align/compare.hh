@@ -19,18 +19,21 @@ namespace text_align { namespace detail {
 	>
 	struct is_equal {};
 	
+	// Both lhs and rhs are signed.
 	template <typename t_lhs, typename t_rhs>
 	struct is_equal <t_lhs, t_rhs, true, true>
 	{
 		static constexpr bool test(t_lhs lhs, t_rhs rhs) { return lhs == rhs; }
 	};
 	
+	// Both lhs and rhs are unsigned.
 	template <typename t_lhs, typename t_rhs>
 	struct is_equal <t_lhs, t_rhs, false, false>
 	{
 		static constexpr bool test(t_lhs lhs, t_rhs rhs) { return lhs == rhs; }
 	};
 	
+	// lhs is signed, rhs is unsigned.
 	template <typename t_lhs, typename t_rhs>
 	struct is_equal <t_lhs, t_rhs, true, false>
 	{
@@ -39,6 +42,7 @@ namespace text_align { namespace detail {
 			if (lhs < 0)
 				return false;
 			
+			// Copy the values to the common type and compare.
 			typedef std::common_type_t <t_lhs, t_rhs> ct;
 			ct lhss(lhs);
 			ct rhss(rhs);
@@ -47,6 +51,7 @@ namespace text_align { namespace detail {
 		}
 	};
 	
+	// lhs is unsigned, rhs is signed.
 	template <typename t_lhs, typename t_rhs>
 	struct is_equal <t_lhs, t_rhs, false, true>
 	{

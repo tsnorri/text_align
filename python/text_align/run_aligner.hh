@@ -23,6 +23,9 @@ namespace text_align { namespace detail {
 		}
 		
 		
+		// Python Unicode strings select the character type in which the greatest code point
+		// fits (without using e.g. surrogate pairs). Determine the character type, create
+		// a span of that type and pass it to the callback.
 		template <typename t_fn>
 		void operator()(PyObject *arg, t_fn &&fn)
 		{
@@ -77,6 +80,7 @@ namespace text_align
 	template <typename t_aligner_context>
 	void run_aligner(t_aligner_context &ctx, PyObject *lhso, PyObject *rhso)
 	{
+		// Convert the Python strings to spans.
 		text_align::map_on_stack_fn <detail::span_from_buffer>(
 			[&ctx](auto const &lhss, auto const &rhss) {
 				ctx.aligner().align(lhss, rhss);

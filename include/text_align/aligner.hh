@@ -209,6 +209,7 @@ namespace text_align {
 	using smith_waterman_alignment_context = alignment_context <t_score, smith_waterman_aligner>;
 	
 	
+	// Return the total alignment score.
 	template <typename t_score, typename t_delegate>
 	t_score smith_waterman_aligner <t_score, t_delegate>::alignment_score() const
 	{
@@ -218,6 +219,7 @@ namespace text_align {
 	}
 	
 	
+	// Align the given strings.
 	template <typename t_score, typename t_delegate>
 	template <typename t_lhs, typename t_rhs>
 	void smith_waterman_aligner <t_score, t_delegate>::align(t_lhs const &lhs, t_rhs const &rhs)
@@ -255,6 +257,8 @@ namespace text_align {
 			for (auto &flag : m_flags)
 				flag.clear();
 			
+			// Set the first row and column to one so that the blocks to the right and below the initial
+			// block may be filled.
 			for (std::size_t i(0); i < lhs_segments; ++i)
 				m_flags[detail::idx(0, i, lhs_segments)].test_and_set();
 			
@@ -281,6 +285,7 @@ namespace text_align {
 	}
 	
 	
+	// Trace the optimal alignment and fill the gap bit vectors.
 	template <typename t_score, typename t_delegate>
 	void smith_waterman_aligner <t_score, t_delegate>::fill_traceback()
 	{
@@ -329,12 +334,14 @@ namespace text_align {
 
 namespace text_align { namespace detail {
 	
+	// Fill one block in the dynamic programming matrix.
 	template <typename t_owner, typename t_lhs, typename t_rhs>
 	void smith_waterman_aligner_impl <t_owner, t_lhs, t_rhs>::align_block(
 		std::size_t const lhs_block_idx,
 		std::size_t const rhs_block_idx
 	)
 	{
+		// Variables from the owner object.
 		auto const seg_len(this->m_owner->segment_length());
 		auto const identity_score(this->m_owner->identity_score());
 		auto const mismatch_penalty(this->m_owner->mismatch_penalty());
@@ -343,6 +350,7 @@ namespace text_align { namespace detail {
 		auto &score_mat(this->score_matrix());
 		auto &flags(this->flag_matrix());
 		
+		// Scoring matrix index limits.
 		auto const lhs_idx(seg_len * lhs_block_idx);
 		auto const rhs_idx(seg_len * rhs_block_idx);
 		auto const lhs_limit(std::min(m_lhs->size(), lhs_idx + seg_len));
