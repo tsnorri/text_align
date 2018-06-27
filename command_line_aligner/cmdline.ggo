@@ -1,0 +1,17 @@
+# Copyright (c) 2018 Tuukka Norri
+# This code is licensed under MIT license (see LICENSE for details).
+
+package		"text_align"
+version		"0.1"
+purpose		"Parallel Smith-Waterman text alignment in O(mn / P) time."
+usage		"text_align --lhs=str1 --rhs=str2 ..."
+description
+"The aligned sequences will be written to standard output."
+
+section "Input and output options"
+option	"lhs"							L	"Left string"					string	typestr = "STRING"					required
+option	"rhs"							R	"Right string"					string	typestr = "STRING"					required
+option	"match-score"					m	"Match score"					short	typestr = "SHORT"	default = "2"	optional
+option	"mismatch-penalty"				i	"Mismatch penalty"				short	typestr = "SHORT"	default = "-1"	optional
+option	"gap-penalty"					g	"Gap penalty"					short	typestr = "SHORT"	default = "-1"	optional
+option	"print-debugging-information"	d	"Print debugging information"	flag	off
