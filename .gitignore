@@ -1,3 +1,12 @@
+# Generated files
+*.o
+python/text_align/*.cpp
+command_line_aligner/cmdline.c
+command_line_aligner/cmdline.h
+command_line_aligner/text_align
+
+local.mk
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
