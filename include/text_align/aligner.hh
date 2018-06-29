@@ -65,7 +65,7 @@ namespace text_align { namespace detail {
 		t_rhs const	*m_rhs{nullptr};
 	
 	protected:
-		inline std::size_t idx(std::size_t const x, std::size_t const y) const { return detail::idx(x, y, (1 + m_lhs->size())); }
+		inline std::size_t idx(std::size_t const x, std::size_t const y) const { return detail::idx(x, y, (1 + this->m_owner->lhs_size())); }
 		
 	public:
 		smith_waterman_aligner_impl() = default;
@@ -152,6 +152,8 @@ namespace text_align {
 		t_score gap_penalty() const { return m_gap_penalty; }
 		uint32_t segment_length() const { return m_segment_length; }
 		bool prints_debugging_information() const { return m_print_debugging_information; }
+		std::size_t lhs_size() const { return m_lhs_length; }
+		std::size_t rhs_size() const { return m_rhs_length; }
 		
 		boost::asio::io_context &io_context() { return *m_ctx; }
 		
@@ -163,6 +165,14 @@ namespace text_align {
 		
 		template <typename t_lhs, typename t_rhs>
 		void align(t_lhs const &lhs, t_rhs const &rhs);
+		
+		template <typename t_lhs, typename t_rhs>
+		void align(
+			t_lhs const &lhs,
+			t_rhs const &rhs,
+			std::size_t const lhs_len,
+			std::size_t const rhs_len
+		);
 		
 		t_score alignment_score() const;
 		
@@ -224,12 +234,26 @@ namespace text_align {
 	template <typename t_lhs, typename t_rhs>
 	void smith_waterman_aligner <t_score, t_delegate>::align(t_lhs const &lhs, t_rhs const &rhs)
 	{
+		align(lhs, rhs, lhs.size(), rhs.size());
+	}
+	
+	
+	// Align the given strings.
+	template <typename t_score, typename t_delegate>
+	template <typename t_lhs, typename t_rhs>
+	void smith_waterman_aligner <t_score, t_delegate>::align(
+		t_lhs const &lhs,
+		t_rhs const &rhs,
+		std::size_t const lhs_len,
+		std::size_t const rhs_len
+	)
+	{
 		// Clear the state, m_score and m_flags are reset below.
 		m_lhs_gaps.clear();
 		m_rhs_gaps.clear();
 		
-		m_lhs_length = lhs.size();
-		m_rhs_length = rhs.size();
+		m_lhs_length = lhs_len;
+		m_rhs_length = rhs_len;
 		
 		// Reserve memory for the scoring matrix.
 		m_score.resize((1 + m_lhs_length) * (1 + m_rhs_length), 0);
@@ -346,6 +370,8 @@ namespace text_align { namespace detail {
 		auto const identity_score(this->m_owner->identity_score());
 		auto const mismatch_penalty(this->m_owner->mismatch_penalty());
 		auto const gap_penalty(this->m_owner->gap_penalty());
+		auto const lhs_len(this->m_owner->lhs_size());
+		auto const rhs_len(this->m_owner->rhs_size());
 		auto &ctx(this->m_owner->io_context());
 		auto &score_mat(this->score_matrix());
 		auto &flags(this->flag_matrix());
@@ -353,20 +379,24 @@ namespace text_align { namespace detail {
 		// Scoring matrix index limits.
 		auto const lhs_idx(seg_len * lhs_block_idx);
 		auto const rhs_idx(seg_len * rhs_block_idx);
-		auto const lhs_limit(std::min(m_lhs->size(), lhs_idx + seg_len));
-		auto const rhs_limit(std::min(m_rhs->size(), rhs_idx + seg_len));
+		auto const lhs_limit(std::min(lhs_len, lhs_idx + seg_len));
+		auto const rhs_limit(std::min(rhs_len, rhs_idx + seg_len));
 	
 		// Fill the scoring matrix.
-		auto lhs_it(m_lhs->cbegin() + lhs_idx);
+		auto lhs_it(m_lhs->begin());
+		auto rhs_it(m_rhs->begin());
+		// FIXME: after processing the range, store the iterators for use in the other blocks.
+		std::advance(lhs_it, lhs_idx);
+		std::advance(rhs_it, rhs_idx);
 		for (std::size_t i(lhs_idx); i < lhs_limit; ++i)
 		{
-			assert(lhs_it != m_lhs->cend());
+			assert(lhs_it != m_lhs->end());
 			
 			auto const lhs_c(*lhs_it);
-			auto rhs_it(m_rhs->cbegin() + rhs_idx);
+			auto rhs_it_2(rhs_it);
 			for (std::size_t j(rhs_idx); j < rhs_limit; ++j)
 			{
-				assert(rhs_it != m_rhs->cend());
+				assert(rhs_it_2 != m_rhs->end());
 				
 				auto const idx1(idx(j, i));
 				auto const idx2(idx(1 + j, i));
@@ -377,7 +407,7 @@ namespace text_align { namespace detail {
 				assert(idx3 < score_mat.size());
 				assert(idx4 < score_mat.size());
 				
-				auto const rhs_c(*rhs_it);
+				auto const rhs_c(*rhs_it_2);
 				auto const s1(score_mat[idx1] + (text_align::is_equal(lhs_c, rhs_c) ? identity_score : mismatch_penalty));
 				auto const s2(score_mat[idx2] + gap_penalty);
 				auto const s3(score_mat[idx3] + gap_penalty);
@@ -385,7 +415,7 @@ namespace text_align { namespace detail {
 				auto const score(std::max({s1, s2, s3}));
 				score_mat[idx4] = score;
 				
-				++rhs_it;
+				++rhs_it_2;
 			}
 			
 			++lhs_it;
@@ -440,14 +470,14 @@ namespace text_align { namespace detail {
 		std::string buffer;
 		
 		std::cerr << '\t';
-		for (std::size_t j(0); j <= m_rhs->size(); ++j)
+		auto const rhs_len(this->m_owner->rhs_size());
+		for (std::size_t j(0); j <= rhs_len; ++j)
 			std::cerr << '\t' << '(' << j << ')';
 		std::cerr << '\n';
 		
 		std::cerr << '\t';
-		auto rhs_it(m_rhs->cbegin());
-		auto const rhs_size(m_rhs->size());
-		for (std::size_t j(0); j <= rhs_size; ++j)
+		auto rhs_it(m_rhs->begin());
+		for (std::size_t j(0); j <= rhs_len; ++j)
 		{
 			std::cerr << '\t';
 			if (j)
@@ -458,9 +488,9 @@ namespace text_align { namespace detail {
 		}
 		std::cerr << '\n';
 		
-		auto lhs_it(m_lhs->cbegin());
-		auto const lhs_size(m_lhs->size());
-		for (std::size_t i(0); i <= lhs_size; ++i)
+		auto lhs_it(m_lhs->begin());
+		auto const lhs_len(this->m_owner->lhs_size());
+		for (std::size_t i(0); i <= lhs_len; ++i)
 		{
 			std::cerr << '(' << i << ")\t";
 			if (i)
@@ -469,7 +499,7 @@ namespace text_align { namespace detail {
 				std::cerr << buffer;
 			}
 		
-			for (std::size_t j(0); j <= m_rhs->size(); ++j)
+			for (std::size_t j(0); j <= rhs_len; ++j)
 				std::cerr << '\t' << score_mat[idx(j, i)];
 			std::cerr << '\n';
 		}
