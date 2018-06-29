@@ -1,0 +1,4 @@
+# text_align extension
+comment = 'Align Unicode text'
+default_version = '0.0.1'
+relocatable = true

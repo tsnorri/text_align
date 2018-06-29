@@ -10,6 +10,7 @@ CC				?= cc
 CXX				?= c++
 GENGETOPT		?= gengetopt
 PYTHON			?= python
+PG_CONFIG		?= pg_config
 
 INCLUDE_DIRS	+= ../include
 LIBRARIES		+= boost_system-mt
