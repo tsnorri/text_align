@@ -4,9 +4,11 @@
  */
 
 #include <boost/locale/utf.hpp>
+#include <boost/range.hpp>
 #include <iostream>
 #include <string>
 #include <text_align/aligner.hh>
+#include <text_align/code_point_iterator.hh>
 #include <vector>
 
 #include "cmdline.h"
@@ -15,32 +17,21 @@
 namespace ta = text_align;
 
 
-typedef std::vector <char32_t> utf32_string;
-
-
-template <typename t_input_it, typename t_output_it>
-void utf8to32(t_input_it it, t_input_it end, t_output_it out)
+template <typename t_range>
+std::size_t copy_distance(t_range range)
 {
-	namespace utf = boost::locale::utf;
-	
-	while (it != end)
-	{
-		auto const code_point(utf::utf_traits <char>::decode(it, end));
-		if (utf::illegal == code_point || utf::incomplete == code_point)
-			throw std::runtime_error("Received malformed UTF-8");
-		*out = code_point;
-		++out;
-	}
+	return boost::distance(range);
 }
 
 
-void print_aligned(utf32_string const &str, std::vector <bool> const &gaps)
+template <typename t_range>
+void print_aligned(t_range const &range, std::vector <bool> const &gaps)
 {
-	assert(str.size() <= gaps.size());
+	//assert(str.size() <= gaps.size());
 	
 	std::string buffer;
 	
-	auto it(str.begin()), end(str.end());
+	auto it(range.begin()), end(range.end());
 	auto ostream_it(std::ostream_iterator <char>(std::cout, ""));
 	// std::ostream_iterator's operator++ is a no-op, hence we don't
 	// save the output value from utf_traits nor use it in else.
@@ -70,18 +61,19 @@ int main(int argc, char **argv)
 	if (0 != cmdline_parser(argc, argv, &args_info))
 		exit(EXIT_FAILURE);
 	
-	utf32_string lhs, rhs;
 	std::string_view lhsv(args_info.lhs_arg, strlen(args_info.lhs_arg));
 	std::string_view rhsv(args_info.rhs_arg, strlen(args_info.rhs_arg));
-	utf8to32(lhsv.cbegin(), lhsv.cend(), std::back_inserter(lhs));
-	utf8to32(rhsv.cbegin(), rhsv.cend(), std::back_inserter(rhs));
+	auto const lhsr(ta::make_code_point_iterator_range(lhsv.cbegin(), lhsv.cend()));
+	auto const rhsr(ta::make_code_point_iterator_range(rhsv.cbegin(), rhsv.cend()));
+	auto const lhs_len(copy_distance(lhsr));
+	auto const rhs_len(copy_distance(rhsr));
+	assert(lhsr.begin() != lhsr.end());
+	assert(rhsr.begin() != rhsr.end());
 	
 	auto const match_score(args_info.match_score_arg);
 	auto const mismatch_penalty(args_info.mismatch_penalty_arg);
 	auto const gap_penalty(args_info.gap_penalty_arg);
 	bool const print_debugging_information(args_info.print_debugging_information_flag);
-	
-	cmdline_parser_free(&args_info);
 	
 	ta::alignment_context <std::int32_t, ta::smith_waterman_aligner> ctx;
 	auto &aligner(ctx.aligner());
@@ -90,12 +82,14 @@ int main(int argc, char **argv)
 	aligner.set_mismatch_penalty(mismatch_penalty);
 	aligner.set_gap_penalty(gap_penalty);
 	aligner.set_prints_debugging_information(print_debugging_information);
-	aligner.align(lhs, rhs);
+	aligner.align(lhsr, rhsr, lhs_len, rhs_len);
 	ctx.run();
 	
 	std::cout << "Score: " << aligner.alignment_score() << std::endl;
-	print_aligned(lhs, aligner.lhs_gaps());
-	print_aligned(rhs, aligner.rhs_gaps());
+	print_aligned(lhsr, aligner.lhs_gaps());
+	print_aligned(rhsr, aligner.rhs_gaps());
 	
+	cmdline_parser_free(&args_info);
+
 	return 0;
 }
