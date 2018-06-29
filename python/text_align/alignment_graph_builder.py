@@ -13,6 +13,9 @@ class NodeType(Enum):
 class NodeBase(object):
 	def __init__(self):
 		self.type = NodeType.NONE
+	
+	def toJSON(self):
+		return {}
 
 
 class CommonNode(NodeBase):
@@ -22,6 +25,9 @@ class CommonNode(NodeBase):
 	
 	def __str__(self):
 		return "{text: '%s'}" % "".join(self.text)
+	
+	def toJSON(self):
+		return {"type": "common", "text": "".join(self.text)}
 
 
 class DistinctNode(NodeBase):
@@ -32,6 +38,9 @@ class DistinctNode(NodeBase):
 	
 	def __str__(self):
 		return "{lhs: '%s', rhs: '%s'}" % ("".join(self.lhs), "".join(self.rhs))
+	
+	def toJSON(self):
+		return {"type": "distinct", "lhs": "".join(self.lhs), "rhs": "".join(self.rhs)}
 
 
 class AlignmentGraphBuilder(object):
