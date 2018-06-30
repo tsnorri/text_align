@@ -89,6 +89,24 @@ namespace text_align
 			lhso, rhso
 		);
 	}
+	
+	
+	template <typename t_aligner>
+	void run_builder(alignment_graph_builder &builder, t_aligner const &aligner, PyObject *lhso, PyObject *rhso)
+	{
+		// Convert the Python strings to spans.
+		text_align::map_on_stack_fn <detail::span_from_buffer>(
+			[&builder, &aligner](auto const &lhss, auto const &rhss) {
+				builder.build_graph(
+					lhss,
+					rhss,
+					aligner.lhs_gaps(),
+					aligner.rhs_gaps()
+				);
+			},
+			lhso, rhso
+		);
+	}
 }
 
 #endif

@@ -1,9 +1,12 @@
 # Copyright (c) 2018 Tuukka Norri
 # This code is licensed under MIT license (see LICENSE for details).
 
-from libc.stdint cimport int32_t
-from run_aligner cimport run_aligner
-from alignment_graph_builder import AlignmentGraphBuilder
+from cython.operator cimport dereference as deref, preincrement as inc
+from libc.stdint cimport uint8_t, int32_t, uint32_t
+from libcpp.vector cimport vector
+from run_aligner cimport run_aligner, run_builder
+from alignment_graph_builder cimport alignment_graph_builder, common_node, distinct_node, COMMON, DISTINCT
+from alignment_graph_node import CommonNode, DistinctNode
 from smith_waterman_aligner cimport smith_waterman_alignment_context
 
 
@@ -72,6 +75,43 @@ cdef class AlignmentContext(object):
 	@property
 	def alignment_score(self):
 		self.ctx.aligner().alignment_score()
+	
+	cdef void copy_to_list(self, const vector[char32_t] &vec, object dst):
+		it = vec.const_begin()
+		end = vec.const_end()
+		cdef uint32_t cp = 0
+		while it != end:
+			cp = <uint32_t> deref(it)
+			dst.append(chr(cp))
+			inc(it)
+	
+	cdef object make_common_node(self, const common_node &seg):
+		dst = []
+		self.copy_to_list(seg.code_points(), dst)
+		return CommonNode(dst)
+	
+	cdef object make_distinct_node(self, const distinct_node &seg):
+		lhs = []
+		rhs = []
+		self.copy_to_list(seg.code_points_lhs(), lhs)
+		self.copy_to_list(seg.code_points_rhs(), rhs)
+		return DistinctNode(lhs, rhs)
+		
+	cdef object make_alignment_graph_from_segments(self, const vector[unique_ptr[node_base]] &segments):
+		retval = []
+		
+		# Using a list comprehension with const_iterators is difficult.
+		it = segments.const_begin()
+		end = segments.const_end()
+		while it != end:
+			seg = deref(it).get()
+			seg_type = <uint8_t> deref(seg).type()
+			if <uint8_t> COMMON == seg_type:
+				retval.append(self.make_common_node(deref(<const common_node *> seg)))
+			elif <uint8_t> DISTINCT == seg_type:
+				retval.append(self.make_distinct_node(deref(<const distinct_node *> seg)))
+			inc(it)
+		return retval
 
 
 cdef class SmithWatermanAlignmentContext(AlignmentContext):
@@ -89,14 +129,10 @@ cdef class SmithWatermanAlignmentContext(AlignmentContext):
 	
 	def align(self):
 		"""Align self.lhs and self.rhs."""
-		run_aligner(self.ctx[0], self.lhs, self.rhs)
+		run_aligner(deref(self.ctx), self.lhs, self.rhs)
 	
 	def make_alignment_graph(self):
-		"""Return the optimal alignment as a graph."""
-		builder = AlignmentGraphBuilder()
-		return builder.build_graph(
-			self.lhs,
-			self.rhs,
-			self.ctx[0].aligner().lhs_gaps(),
-			self.ctx[0].aligner().rhs_gaps()
-		)
+		"""Return the alignment as a graph."""
+		cdef alignment_graph_builder builder
+		run_builder(builder, deref(self.ctx).aligner(), self.lhs, self.rhs)
+		return self.make_alignment_graph_from_segments(builder.text_segments())
