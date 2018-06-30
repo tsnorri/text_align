@@ -31,6 +31,9 @@ namespace text_align { namespace alignment_graph {
 	class node_base : public json::serializable
 	{
 	public:
+		typedef std::vector <char32_t> code_point_vector;
+		
+	public:
 		virtual enum node_type type() const { return node_type::NONE; }
 		virtual void to_json(std::ostream &stream) const override {}
 	};
@@ -38,11 +41,13 @@ namespace text_align { namespace alignment_graph {
 	
 	class common_node : public node_base
 	{
-		std::vector <char32_t> m_text;
+		node_base::code_point_vector m_text;
 		
 	public:
 		virtual enum node_type type() const override { return node_type::COMMON; }
 		void add_code_point(char32_t const c) { m_text.push_back(c); }
+		node_base::code_point_vector const &code_points() const { return m_text; }
+		
 		virtual void to_json(std::ostream &stream) const override;
 	};
 	
@@ -50,13 +55,15 @@ namespace text_align { namespace alignment_graph {
 	class distinct_node : public node_base
 	{
 	protected:
-		std::vector <char32_t>	m_lhs;
-		std::vector <char32_t>	m_rhs;
+		node_base::code_point_vector	m_lhs;
+		node_base::code_point_vector	m_rhs;
 		
 	public:
 		virtual enum node_type type() const override { return node_type::DISTINCT; }
 		void add_code_point_lhs(char32_t const c) { m_lhs.push_back(c); }
 		void add_code_point_rhs(char32_t const c) { m_rhs.push_back(c); }
+		node_base::code_point_vector const &code_points_lhs() const { return m_lhs; }
+		node_base::code_point_vector const &code_points_rhs() const { return m_rhs; }
 		virtual void to_json(std::ostream &stream) const override;
 	};
 }}
@@ -96,8 +103,10 @@ namespace text_align {
 	template <typename t_lhs, typename t_rhs>
 	void alignment_graph_builder::build_graph(t_lhs const &lhs, t_rhs const &rhs, gap_vector const &lhs_gaps, gap_vector const &rhs_gaps)
 	{
-		auto lhs_it(lhs.begin()), rhs_it(rhs.begin());
-		auto const lhs_end(lhs.end()), rhs_end(rhs.end());
+		auto lhs_it(lhs.begin());
+		auto rhs_it(rhs.begin());
+		auto const lhs_end(lhs.end());
+		auto const rhs_end(rhs.end());
 		
 		// At a given aligned index, if both lhs and rhs have the same character,
 		// append it to a graph node that represents a common segment.
@@ -117,7 +126,7 @@ namespace text_align {
 				auto const lhsc(*lhs_it++);
 				auto const rhsc(*rhs_it++);
 				
-				if (lhsc == rhsc)
+				if (is_equal(lhsc, rhsc))
 					append_to_common_segment(lhsc);
 				else
 					append_to_distinct_segment(lhsc, rhsc);
