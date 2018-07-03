@@ -12,17 +12,11 @@
 #include <cstdint>
 #include <iostream>
 #include <text_align/compare.hh>
+#include <text_align/matrix.hh>
 #include <type_traits>
-#include <vector>
-
-
-//#define my_assert(X) do { if (! (X)) { std::cerr << "Assertion failed on line " << __LINE__ << ": " << #X << std::endl; abort(); }} while (false)
 
 
 namespace text_align { namespace detail {
-	
-	inline std::size_t idx(std::size_t const x, std::size_t const y, std::size_t const height) { return x * height + y; }
-	
 	
 	template <typename t_owner>
 	class smith_waterman_aligner_impl_base
@@ -31,9 +25,6 @@ namespace text_align { namespace detail {
 		t_owner		*m_owner{nullptr};
 		std::size_t	m_lhs_segments{0};
 		std::size_t	m_rhs_segments{0};
-		
-	protected:
-		inline std::size_t fidx(std::size_t const x, std::size_t const y) const { return detail::idx(x, y, m_lhs_segments); }
 		
 	public:
 		smith_waterman_aligner_impl_base() = default;
@@ -48,7 +39,6 @@ namespace text_align { namespace detail {
 		typename t_owner::score_matrix const &score_matrix() const { return m_owner->m_score; }
 		typename t_owner::flag_matrix &flag_matrix() { return m_owner->m_flags; }
 		typename t_owner::flag_matrix const &flag_matrix() const { return m_owner->m_flags; }
-		void print_matrix();
 		void fill_traceback() { this->m_owner->fill_traceback(); }
 		void finish() { this->m_owner->finish(); }
 	};
@@ -64,9 +54,6 @@ namespace text_align { namespace detail {
 		t_lhs const	*m_lhs{nullptr};
 		t_rhs const	*m_rhs{nullptr};
 	
-	protected:
-		inline std::size_t idx(std::size_t const x, std::size_t const y) const { return detail::idx(x, y, (1 + this->m_owner->lhs_size())); }
-		
 	public:
 		smith_waterman_aligner_impl() = default;
 		smith_waterman_aligner_impl(
@@ -111,8 +98,8 @@ namespace text_align {
 			SCORE_MIN = std::numeric_limits <t_score>::min()
 		};
 		
-		typedef std::vector <t_score>												score_matrix;
-		typedef std::vector <std::atomic_flag>										flag_matrix;
+		typedef matrix <t_score>													score_matrix;
+		typedef matrix <std::atomic_flag>											flag_matrix;
 		typedef detail::smith_waterman_aligner_impl_base <smith_waterman_aligner>	impl_base_type;
 		friend impl_base_type;
 		
@@ -133,8 +120,6 @@ namespace text_align {
 		bool								m_print_debugging_information{false};
 		
 	protected:
-		inline std::size_t idx(std::size_t const x, std::size_t const y) const { return detail::idx(x, y, 1 + m_lhs_length); }
-		
 		void fill_traceback();
 		void finish() { m_aligner_impl.reset(); m_delegate->finish(*this); }
 		
@@ -225,7 +210,7 @@ namespace text_align {
 	{
 		std::size_t y(m_lhs_length);
 		std::size_t x(m_rhs_length);
-		return m_score[idx(x, y)];
+		return m_score(y, x);
 	}
 	
 	
@@ -256,13 +241,13 @@ namespace text_align {
 		m_rhs_length = rhs_len;
 		
 		// Reserve memory for the scoring matrix.
-		m_score.resize((1 + m_lhs_length) * (1 + m_rhs_length), 0);
+		m_score.resize(1 + m_lhs_length, 1 + m_rhs_length, 0);
 		
 		// Initialize the first column and row.
 		for (std::size_t i(0); i < m_lhs_length; ++i)
-			m_score[idx(0, 1 + i)] = (1 + i) * m_gap_penalty;
+			m_score(1 + i, 0) = (1 + i) * m_gap_penalty;
 		for (std::size_t i(0); i < m_rhs_length; ++i)
-			m_score[idx(1 + i, 0)] = (1 + i) * m_gap_penalty;
+			m_score(0, 1 + i) = (1 + i) * m_gap_penalty;
 		
 		// Count the segments.
 		auto const lhs_segments(std::ceil(1.0 * m_lhs_length / m_segment_length));
@@ -270,11 +255,11 @@ namespace text_align {
 		
 		// Initialize the flags.
 		{
-			auto const flag_count(lhs_segments * rhs_segments);
-			if (m_flags.size() < flag_count)
+			if (m_flags.row_size() < lhs_segments || m_flags.column_size() < rhs_segments)
 			{
 				using std::swap;
-				flag_matrix temp_flags(flag_count);
+				flag_matrix temp_flags(lhs_segments, rhs_segments);
+				temp_flags.set_stride(lhs_segments);
 				swap(m_flags, temp_flags);
 			}
 			
@@ -284,10 +269,10 @@ namespace text_align {
 			// Set the first row and column to one so that the blocks to the right and below the initial
 			// block may be filled.
 			for (std::size_t i(0); i < lhs_segments; ++i)
-				m_flags[detail::idx(0, i, lhs_segments)].test_and_set();
+				m_flags(0, i).test_and_set();
 			
 			for (std::size_t i(0); i < rhs_segments; ++i)
-				m_flags[detail::idx(i, 0, lhs_segments)].test_and_set();
+				m_flags(i, 0).test_and_set();
 		}
 		
 		// Instantiate the implementation.
@@ -325,9 +310,9 @@ namespace text_align {
 			if (m_print_debugging_information)
 				std::cerr << "x: " << x << " y: " << y << std::endl;
 			
-			auto const s1((0 < x && 0 < y) ? m_score[idx(x - 1, y - 1)] : SCORE_MIN);
-			auto const s2(0 < y ? m_score[idx(x, y - 1)] : SCORE_MIN);
-			auto const s3(0 < x ? m_score[idx(x - 1, y)] : SCORE_MIN);
+			auto const s1((0 < x && 0 < y) ? m_score(y - 1, x - 1) : SCORE_MIN);
+			auto const s2(0 < y ? m_score(y - 1, x) : SCORE_MIN);
+			auto const s3(0 < x ? m_score(y, x - 1) : SCORE_MIN);
 		
 			if (s1 >= s2 && s1 >= s3)
 			{
@@ -388,32 +373,23 @@ namespace text_align { namespace detail {
 		// FIXME: after processing the range, store the iterators for use in the other blocks.
 		std::advance(lhs_it, lhs_idx);
 		std::advance(rhs_it, rhs_idx);
-		for (std::size_t i(lhs_idx); i < lhs_limit; ++i)
+		for (std::size_t i(lhs_idx); i < lhs_limit; ++i) // Row
 		{
 			assert(lhs_it != m_lhs->end());
 			
 			auto const lhs_c(*lhs_it);
 			auto rhs_it_2(rhs_it);
-			for (std::size_t j(rhs_idx); j < rhs_limit; ++j)
+			for (std::size_t j(rhs_idx); j < rhs_limit; ++j) // Column
 			{
 				assert(rhs_it_2 != m_rhs->end());
 				
-				auto const idx1(idx(j, i));
-				auto const idx2(idx(1 + j, i));
-				auto const idx3(idx(j, 1 + i));
-				auto const idx4(idx(1 + j, 1 + i));
-				assert(idx1 < score_mat.size());
-				assert(idx2 < score_mat.size());
-				assert(idx3 < score_mat.size());
-				assert(idx4 < score_mat.size());
-				
 				auto const rhs_c(*rhs_it_2);
-				auto const s1(score_mat[idx1] + (text_align::is_equal(lhs_c, rhs_c) ? identity_score : mismatch_penalty));
-				auto const s2(score_mat[idx2] + gap_penalty);
-				auto const s3(score_mat[idx3] + gap_penalty);
+				auto const s1(score_mat(i, j) + (text_align::is_equal(lhs_c, rhs_c) ? identity_score : mismatch_penalty));
+				auto const s2(score_mat(i, 1 + j) + gap_penalty);
+				auto const s3(score_mat(1 + i, j) + gap_penalty);
 			
 				auto const score(std::max({s1, s2, s3}));
-				score_mat[idx4] = score;
+				score_mat(1 + i, 1 + j) = score;
 				
 				++rhs_it_2;
 			}
@@ -440,7 +416,7 @@ namespace text_align { namespace detail {
 		{
 			if (1 + lhs_block_idx < this->m_lhs_segments)
 			{
-				auto const prev_val(flags[this->fidx(rhs_block_idx, 1 + lhs_block_idx)].test_and_set());
+				auto const prev_val(flags(1 + lhs_block_idx, rhs_block_idx).test_and_set());
 				if (prev_val)
 				{
 					boost::asio::post(ctx, [this, lhs_block_idx, rhs_block_idx](){
@@ -451,7 +427,7 @@ namespace text_align { namespace detail {
 	
 			if (1 + rhs_block_idx < this->m_rhs_segments)
 			{
-				auto const prev_val(flags[this->fidx(1 + rhs_block_idx, lhs_block_idx)].test_and_set());
+				auto const prev_val(flags(lhs_block_idx, 1 + rhs_block_idx).test_and_set());
 				if (prev_val)
 				{
 					boost::asio::post(ctx, [this, lhs_block_idx, rhs_block_idx](){
@@ -500,7 +476,7 @@ namespace text_align { namespace detail {
 			}
 		
 			for (std::size_t j(0); j <= rhs_len; ++j)
-				std::cerr << '\t' << score_mat[idx(j, i)];
+				std::cerr << '\t' << score_mat(i, j);
 			std::cerr << '\n';
 		}
 	}
