@@ -95,23 +95,19 @@ namespace text_align { namespace detail {
 		{
 		}
 		
+		std::size_t size() const { return m_slice.size(); }
+		
 		value_type &operator[](std::size_t const idx) { return *(begin() + idx); }
 		value_type const &operator[](std::size_t const idx) const { return *(begin() + idx); }
 		
-		typename std::enable_if_t <!std::is_const_v <matrix_type>, matrix_iterator>
-		begin() { return matrix_iterator(m_matrix->begin() + m_slice.start(), m_slice.stride()); }
-		
-		typename std::enable_if_t <!std::is_const_v <matrix_type>, matrix_iterator>
-		end() { return matrix_iterator(m_matrix->begin() + m_slice.start() + m_slice.size() * m_slice.stride(), m_slice.stride()); }
-		
-		typename std::enable_if_t <!std::is_const_v <matrix_type>, matrix_iterator_range>
-		range() { return boost::make_iterator_range(begin(), end()); }
-		
+		matrix_iterator begin() { return matrix_iterator(m_matrix->begin() + m_slice.start(), m_slice.stride()); }
+		matrix_iterator end() { return matrix_iterator(m_matrix->begin() + m_slice.start() + m_slice.size() * m_slice.stride(), m_slice.stride()); }
+		matrix_iterator range() { return boost::make_iterator_range(begin(), end()); }
 		const_matrix_iterator begin() const { return cbegin(); }
 		const_matrix_iterator end() const { return cend(); }
+		const_matrix_iterator_range range() const { return const_range(); }
 		const_matrix_iterator cbegin() const { return const_matrix_iterator(m_matrix->cbegin() + m_slice.start(), m_slice.stride()); }
 		const_matrix_iterator cend() const { return const_matrix_iterator(m_matrix->cbegin() + m_slice.start() + m_slice.size() * m_slice.stride(), m_slice.stride()); }
-		const_matrix_iterator_range range() const { return boost::make_iterator_range(begin(), end()); }
 		const_matrix_iterator_range const_range() const { return boost::make_iterator_range(cbegin(), cend()); }
 	};
 }}
@@ -179,13 +175,17 @@ namespace text_align {
 		value_type &operator()(std::size_t const y, std::size_t const x) { return m_values[idx(y, x)]; }
 		value_type const &operator()(std::size_t const y, std::size_t const x) const { return m_values[idx(y, x)]; }
 		slice_type row(std::size_t const row, std::size_t const first = 0);
-		slice_type column(std::size_t const row, std::size_t const first = 0);
+		slice_type column(std::size_t const column, std::size_t const first = 0);
 		slice_type row(std::size_t const row, std::size_t const first, std::size_t const limit);
-		slice_type column(std::size_t const row, std::size_t const first, std::size_t const limit);
-		const_slice_type row(std::size_t const row, std::size_t const first = 0) const;
-		const_slice_type column(std::size_t const row, std::size_t const first = 0) const;
-		const_slice_type row(std::size_t const row, std::size_t const first, std::size_t const limit) const;
-		const_slice_type column(std::size_t const row, std::size_t const first, std::size_t const limit) const;
+		slice_type column(std::size_t const column, std::size_t const first, std::size_t const limit);
+		const_slice_type row(std::size_t const row, std::size_t const first = 0) const { return const_row(row, first); };
+		const_slice_type column(std::size_t const column, std::size_t const first = 0) const { return const_column(column, first); }
+		const_slice_type row(std::size_t const row, std::size_t const first, std::size_t const limit) const { return const_row(row, first, limit); }
+		const_slice_type column(std::size_t const column, std::size_t const first, std::size_t const limit) const { return const_column(column, first, limit); }
+		const_slice_type const_row(std::size_t const row, std::size_t const first = 0) const;
+		const_slice_type const_column(std::size_t const column, std::size_t const first = 0) const;
+		const_slice_type const_row(std::size_t const row, std::size_t const first, std::size_t const limit) const;
+		const_slice_type const_column(std::size_t const column, std::size_t const first, std::size_t const limit) const;
 		vector_iterator begin() { return m_values.begin(); }
 		vector_iterator end() { return m_values.end(); }
 		const_vector_iterator begin() const { return m_values.cbegin(); }
@@ -226,13 +226,13 @@ namespace text_align {
 	}
 	
 	template <typename t_value>
-	auto matrix <t_value>::row(std::size_t const row, std::size_t const first) const -> const_slice_type
+	auto matrix <t_value>::const_row(std::size_t const row, std::size_t const first) const -> const_slice_type
 	{
 		return this->row(row, first, this->column_size());
 	}
 	
 	template <typename t_value>
-	auto matrix <t_value>::column(std::size_t const column, std::size_t const first) const -> const_slice_type
+	auto matrix <t_value>::const_column(std::size_t const column, std::size_t const first) const -> const_slice_type
 	{
 		return this->column(column, first, this->row_size());
 	}
@@ -252,14 +252,14 @@ namespace text_align {
 	}
 	
 	template <typename t_value>
-	auto matrix <t_value>::row(std::size_t const row, std::size_t const first, std::size_t const limit) const -> const_slice_type
+	auto matrix <t_value>::const_row(std::size_t const row, std::size_t const first, std::size_t const limit) const -> const_slice_type
 	{
 		std::slice const slice(idx(row, first), limit - first, m_stride);
 		return const_slice_type(*this, slice);
 	}
 	
 	template <typename t_value>
-	auto matrix <t_value>::column(std::size_t const column, std::size_t const first, std::size_t const limit) const -> const_slice_type
+	auto matrix <t_value>::const_column(std::size_t const column, std::size_t const first, std::size_t const limit) const -> const_slice_type
 	{
 		std::slice const slice(idx(first, column), limit - first, 1);
 		return const_slice_type(*this, slice);
