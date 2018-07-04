@@ -8,11 +8,19 @@ usage		"text_align --lhs=str1 --rhs=str2 ..."
 description
 "The aligned sequences will be written to standard output."
 
-section "Input and output options"
-option	"lhs"							L	"Left string"					string	typestr = "STRING"					required
-option	"rhs"							R	"Right string"					string	typestr = "STRING"					required
+defgroup "Left side input"	required
+groupoption	"lhs"						l	"Left string"					string	typestr = "STRING"	group = "Left side input"
+groupoption	"lhs-file"					L	"Left input file"				string	typestr = "PATH"	group = "Left side input"
+
+defgroup "Right side input"	required
+groupoption	"rhs"						r	"Right string"					string	typestr = "STRING"	group = "Right side input"
+groupoption	"rhs-file"					R	"Right input file"				string	typestr = "PATH"	group = "Right side input"
+
+section "Scoring options"
 option	"match-score"					m	"Match score"					short	typestr = "SHORT"	default = "2"	optional
 option	"mismatch-penalty"				i	"Mismatch penalty"				short	typestr = "SHORT"	default = "-1"	optional
 option	"gap-start-penalty"				s	"Gap start penalty"				short	typestr = "SHORT"	default = "-10"	optional
 option	"gap-penalty"					g	"Gap penalty"					short	typestr = "SHORT"	default = "-1"	optional
+
+section "Other options"
 option	"print-debugging-information"	d	"Print debugging information"	flag	off

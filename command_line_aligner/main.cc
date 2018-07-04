@@ -9,6 +9,8 @@
 #include <string>
 #include <text_align/aligner.hh>
 #include <text_align/code_point_iterator.hh>
+#include <text_align/map_on_stack.hh>
+#include <text_align/mmap_handle.hh>
 #include <vector>
 
 #include "cmdline.h"
@@ -52,6 +54,30 @@ void print_aligned(t_range const &range, std::vector <bool> const &gaps)
 }
 
 
+struct string_view_from_input
+{
+	template <typename t_tuple, typename t_fn>
+	void operator()(t_tuple const &tuple, t_fn &&fn)
+	{
+		auto const *arg(std::get <0>(tuple));
+		auto const *path_arg(std::get <1>(tuple));
+		
+		if (arg)
+		{
+			std::string_view view(arg, strlen(arg));
+			fn(view);
+		}
+		else
+		{
+			text_align::mmap_handle handle;
+			handle.open(path_arg);
+			std::string_view view(handle.data(), handle.size());
+			fn(view);
+		}
+	}
+};
+
+
 int main(int argc, char **argv)
 {
 	//std::string lhs("ACTAAGGCTCTCTACCCCTCTCAGAGA");
@@ -61,35 +87,40 @@ int main(int argc, char **argv)
 	if (0 != cmdline_parser(argc, argv, &args_info))
 		exit(EXIT_FAILURE);
 	
-	std::string_view lhsv(args_info.lhs_arg, strlen(args_info.lhs_arg));
-	std::string_view rhsv(args_info.rhs_arg, strlen(args_info.rhs_arg));
-	auto const lhsr(ta::make_code_point_iterator_range(lhsv.cbegin(), lhsv.cend()));
-	auto const rhsr(ta::make_code_point_iterator_range(rhsv.cbegin(), rhsv.cend()));
-	auto const lhs_len(copy_distance(lhsr));
-	auto const rhs_len(copy_distance(rhsr));
-	assert(lhsr.begin() != lhsr.end());
-	assert(rhsr.begin() != rhsr.end());
+	auto const lhs_input(std::make_tuple(args_info.lhs_arg, args_info.lhs_file_arg));
+	auto const rhs_input(std::make_tuple(args_info.rhs_arg, args_info.rhs_file_arg));
+	text_align::map_on_stack_fn <string_view_from_input>(
+		[&args_info](std::string_view const &lhsv, std::string_view const &rhsv) {
+			auto const lhsr(ta::make_code_point_iterator_range(lhsv.cbegin(), lhsv.cend()));
+			auto const rhsr(ta::make_code_point_iterator_range(rhsv.cbegin(), rhsv.cend()));
+			auto const lhs_len(copy_distance(lhsr));
+			auto const rhs_len(copy_distance(rhsr));
+			assert(lhsr.begin() != lhsr.end());
+			assert(rhsr.begin() != rhsr.end());
 	
-	auto const match_score(args_info.match_score_arg);
-	auto const mismatch_penalty(args_info.mismatch_penalty_arg);
-	auto const gap_start_penalty(args_info.gap_start_penalty_arg);
-	auto const gap_penalty(args_info.gap_penalty_arg);
-	bool const print_debugging_information(args_info.print_debugging_information_flag);
+			auto const match_score(args_info.match_score_arg);
+			auto const mismatch_penalty(args_info.mismatch_penalty_arg);
+			auto const gap_start_penalty(args_info.gap_start_penalty_arg);
+			auto const gap_penalty(args_info.gap_penalty_arg);
+			bool const print_debugging_information(args_info.print_debugging_information_flag);
 	
-	ta::alignment_context <std::int32_t, ta::smith_waterman_aligner> ctx;
-	auto &aligner(ctx.aligner());
+			ta::alignment_context <std::int32_t, ta::smith_waterman_aligner> ctx;
+			auto &aligner(ctx.aligner());
 	
-	aligner.set_identity_score(match_score);
-	aligner.set_mismatch_penalty(mismatch_penalty);
-	aligner.set_gap_start_penalty(gap_start_penalty);
-	aligner.set_gap_penalty(gap_penalty);
-	aligner.set_prints_debugging_information(print_debugging_information);
-	aligner.align(lhsr, rhsr, lhs_len, rhs_len);
-	ctx.run();
+			aligner.set_identity_score(match_score);
+			aligner.set_mismatch_penalty(mismatch_penalty);
+			aligner.set_gap_start_penalty(gap_start_penalty);
+			aligner.set_gap_penalty(gap_penalty);
+			aligner.set_prints_debugging_information(print_debugging_information);
+			aligner.align(lhsr, rhsr, lhs_len, rhs_len);
+			ctx.run();
 	
-	std::cout << "Score: " << aligner.alignment_score() << std::endl;
-	print_aligned(lhsr, aligner.lhs_gaps());
-	print_aligned(rhsr, aligner.rhs_gaps());
+			std::cout << "Score: " << aligner.alignment_score() << std::endl;
+			print_aligned(lhsr, aligner.lhs_gaps());
+			print_aligned(rhsr, aligner.rhs_gaps());
+		},
+		lhs_input, rhs_input
+	);
 	
 	cmdline_parser_free(&args_info);
 
