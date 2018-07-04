@@ -72,6 +72,7 @@ int main(int argc, char **argv)
 	
 	auto const match_score(args_info.match_score_arg);
 	auto const mismatch_penalty(args_info.mismatch_penalty_arg);
+	auto const gap_start_penalty(args_info.gap_start_penalty_arg);
 	auto const gap_penalty(args_info.gap_penalty_arg);
 	bool const print_debugging_information(args_info.print_debugging_information_flag);
 	
@@ -80,6 +81,7 @@ int main(int argc, char **argv)
 	
 	aligner.set_identity_score(match_score);
 	aligner.set_mismatch_penalty(mismatch_penalty);
+	aligner.set_gap_start_penalty(gap_start_penalty);
 	aligner.set_gap_penalty(gap_penalty);
 	aligner.set_prints_debugging_information(print_debugging_information);
 	aligner.align(lhsr, rhsr, lhs_len, rhs_len);

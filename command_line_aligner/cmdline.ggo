@@ -13,5 +13,6 @@ option	"lhs"							L	"Left string"					string	typestr = "STRING"					required
 option	"rhs"							R	"Right string"					string	typestr = "STRING"					required
 option	"match-score"					m	"Match score"					short	typestr = "SHORT"	default = "2"	optional
 option	"mismatch-penalty"				i	"Mismatch penalty"				short	typestr = "SHORT"	default = "-1"	optional
+option	"gap-start-penalty"				s	"Gap start penalty"				short	typestr = "SHORT"	default = "-10"	optional
 option	"gap-penalty"					g	"Gap penalty"					short	typestr = "SHORT"	default = "-1"	optional
 option	"print-debugging-information"	d	"Print debugging information"	flag	off
