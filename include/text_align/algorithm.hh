@@ -3,8 +3,8 @@
  * This code is licensed under MIT license (see LICENSE for details).
  */
 
-#ifndef TEXT_ALIGN_COMPARE_HH
-#define TEXT_ALIGN_COMPARE_HH
+#ifndef TEXT_ALIGN_ALGORITHM_HH
+#define TEXT_ALIGN_ALGORITHM_HH
 
 #include <type_traits>
 
@@ -72,6 +72,13 @@ namespace text_align {
 		static_assert(std::is_integral_v <t_lhs>, "Expected t_lhs to be integral");
 		static_assert(std::is_integral_v <t_rhs>, "Expected t_rhs to be integral");
 		return detail::is_equal <t_lhs, t_rhs>::test(lhs, rhs);
+	}
+	
+	
+	template <typename t_it>
+	constexpr std::size_t argmax_element(t_it begin, t_it end)
+	{
+		return std::distance(begin, std::max_element(begin, end));
 	}
 }
 

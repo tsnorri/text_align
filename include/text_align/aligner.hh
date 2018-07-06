@@ -11,7 +11,7 @@
 #include <boost/locale/utf.hpp>
 #include <cstdint>
 #include <iostream>
-#include <text_align/compare.hh>
+#include <text_align/algorithm.hh>
 #include <text_align/matrix.hh>
 #include <type_traits>
 
@@ -44,7 +44,6 @@ namespace text_align { namespace detail {
 		score_matrix_type &score_matrix() { return m_owner->m_score; }
 		score_matrix_type const &score_matrix() const { return m_owner->m_score; }
 		score_vector_type &lhs_gap_scores() { return m_owner->m_lhs_gap_scores; }
-		score_vector_type &rhs_gap_scores() { return m_owner->m_rhs_gap_scores; }
 		typename t_owner::flag_matrix &flag_matrix() { return m_owner->m_flags; }
 		typename t_owner::flag_matrix const &flag_matrix() const { return m_owner->m_flags; }
 		void fill_traceback() { this->m_owner->fill_traceback(); }
@@ -57,6 +56,7 @@ namespace text_align { namespace detail {
 	{
 	protected:
 		typedef smith_waterman_aligner_impl_base <t_owner> base_class;
+		using typename base_class::score_type;
 		
 	protected:
 		t_lhs const	*m_lhs{nullptr};
@@ -116,13 +116,12 @@ namespace text_align {
 		static_assert(atomic_counter::is_always_lock_free);
 		
 	protected:
-		boost::asio::io_context				*m_ctx{nullptr};
+		boost::asio::thread_pool			*m_ctx{nullptr};
 		t_delegate							*m_delegate{nullptr};
 		std::unique_ptr <impl_base_type>	m_aligner_impl;
 		flag_matrix							m_flags;
 		score_matrix						m_score;
 		score_vector						m_lhs_gap_scores;
-		score_vector						m_rhs_gap_scores;
 		std::vector <bool>					m_lhs_gaps;
 		std::vector <bool>					m_rhs_gaps;
 		t_score								m_identity_score{2};
@@ -141,7 +140,7 @@ namespace text_align {
 	public:
 		smith_waterman_aligner() = default;
 		
-		smith_waterman_aligner(boost::asio::io_context &ctx, t_delegate &delegate):
+		smith_waterman_aligner(boost::asio::thread_pool &ctx, t_delegate &delegate):
 			m_ctx(&ctx),
 			m_delegate(&delegate)
 		{
@@ -156,7 +155,7 @@ namespace text_align {
 		std::size_t lhs_size() const { return m_lhs_length; }
 		std::size_t rhs_size() const { return m_rhs_length; }
 		
-		boost::asio::io_context &io_context() { return *m_ctx; }
+		boost::asio::thread_pool &execution_context() { return *m_ctx; }
 		
 		void set_identity_score(t_score const score) { m_identity_score = score; }
 		void set_mismatch_penalty(t_score const score) { m_mismatch_penalty = score; }
@@ -196,7 +195,7 @@ namespace text_align {
 		
 	protected:
 		aligner_type				m_aligner;
-		boost::asio::io_context		m_ctx{12};
+		boost::asio::thread_pool	m_ctx{};
 		
 	public:
 		alignment_context():
@@ -207,10 +206,10 @@ namespace text_align {
 		aligner_type &aligner() { return m_aligner; }
 		aligner_type const &aligner() const { return m_aligner; }
 
-		boost::asio::io_context &io_context() { return m_ctx; }
-		boost::asio::io_context const &io_context() const { return m_ctx; }
+		boost::asio::thread_pool &execution_context() { return m_ctx; }
+		boost::asio::thread_pool const &execution_context() const { return m_ctx; }
 		
-		void run() { m_ctx.run(); }
+		void run() { m_ctx.join(); }
 		
 	protected:
 		void finish(aligner_type &aligner) { m_ctx.stop(); }
@@ -261,19 +260,16 @@ namespace text_align {
 		m_score.resize(1 + m_lhs_length, 1 + m_rhs_length, 0);
 		std::fill(m_score.begin(), m_score.end(), 0);
 		
-		// Reserve memory for the gap scores.
+		// Reserve memory for the maximum gap scores.
 		m_lhs_gap_scores.resize(m_lhs_length);
-		m_rhs_gap_scores.resize(m_rhs_length);
 		std::fill(m_lhs_gap_scores.begin(), m_lhs_gap_scores.end(), 0);
-		std::fill(m_rhs_gap_scores.begin(), m_rhs_gap_scores.end(), 0);
 		
 		// Initialize the first column and row.
-#if 1
+		// Not used before calculating the traceback.)
 		for (std::size_t i(0); i < m_lhs_length; ++i)
-			m_score(1 + i, 0) = (1 + i) * m_gap_penalty;
+			m_score(1 + i, 0) = m_gap_start_penalty + (1 + i) * m_gap_penalty;
 		for (std::size_t i(0); i < m_rhs_length; ++i)
-			m_score(0, 1 + i) = (1 + i) * m_gap_penalty;
-#endif
+			m_score(0, 1 + i) = m_gap_start_penalty + (1 + i) * m_gap_penalty;
 		
 		// Count the segments.
 		auto const lhs_segments(std::ceil(1.0 * m_lhs_length / m_segment_length));
@@ -295,10 +291,10 @@ namespace text_align {
 			// Set the first row and column to one so that the blocks to the right and below the initial
 			// block may be filled.
 			for (std::size_t i(0); i < lhs_segments; ++i)
-				m_flags(0, i).store(1);
+				m_flags(i, 0).store(1);
 			
 			for (std::size_t i(0); i < rhs_segments; ++i)
-				m_flags(i, 0).store(1);
+				m_flags(0, i).store(1);
 		}
 		
 		// Instantiate the implementation.
@@ -384,10 +380,9 @@ namespace text_align { namespace detail {
 		auto const gap_penalty(this->m_owner->gap_penalty());
 		auto const lhs_len(this->m_owner->lhs_size());
 		auto const rhs_len(this->m_owner->rhs_size());
-		auto &ctx(this->m_owner->io_context());
+		auto &ctx(this->m_owner->execution_context());
 		auto &score_mat(this->score_matrix());
 		auto &lhs_gap_scores(this->lhs_gap_scores());
-		auto &rhs_gap_scores(this->rhs_gap_scores());
 		auto &flags(this->flag_matrix());
 		
 		// Scoring matrix index limits.
@@ -408,23 +403,33 @@ namespace text_align { namespace detail {
 			
 			auto const rhs_c(*rhs_it);
 			auto lhs_it_2(lhs_it);
+			score_type rhs_gap_score(0);
 			for (std::size_t j(lhs_idx); j < lhs_limit; ++j) // Row
 			{
 				assert(lhs_it_2 != m_lhs->end());
 				
 				// Update the existing max. score s.t. the gap would continue here.
 				lhs_gap_scores[1 + j] += gap_penalty;
-				rhs_gap_scores[1 + i] += gap_penalty;
+				rhs_gap_score += gap_penalty;
 				
 				auto const lhs_c(*lhs_it_2);
 				auto const s1(score_mat(j, i) + (text_align::is_equal(lhs_c, rhs_c) ? identity_score : mismatch_penalty));
-				auto const s2(gap_start_penalty + lhs_gap_scores[1 + j]);
-				auto const s3(gap_start_penalty + rhs_gap_scores[1 + i]);
-				auto const score(std::max({s1, s2, s3}));
+				auto const s2(lhs_gap_scores[1 + j]);
+				auto const s3(rhs_gap_score);
+				
+				// Take gap_start_penalty into account when choosing the maximum element and saving the score,
+				// when caching the value, don't add gap_start_penalty.
+				std::initializer_list <score_type> const scores{s1, gap_start_penalty + s2, gap_start_penalty + s3};
+				std::initializer_list <score_type> const gap_scores{s1, s2, s3};
+				auto const max_idx(argmax_element(scores.begin(), scores.end()));
+				assert(max_idx < scores.size());
+				assert(max_idx < gap_scores.size());
+				auto const score(*(max_idx + scores.begin()));
+				auto const gap_score(*(max_idx + gap_scores.begin()));
 				
 				score_mat(1 + j, 1 + i) = score;
-				lhs_gap_scores[1 + j] = std::max({score, lhs_gap_scores[1 + j]});
-				rhs_gap_scores[1 + i] = std::max({score, rhs_gap_scores[1 + i]});
+				lhs_gap_scores[1 + j] = std::max({gap_score, lhs_gap_scores[1 + j]});
+				rhs_gap_score = std::max({gap_score, rhs_gap_score});
 				
 				++lhs_it_2;
 			}
@@ -480,39 +485,39 @@ namespace text_align { namespace detail {
 		auto &score_mat(this->score_matrix());
 		std::string buffer;
 		
-		std::cerr << '\t';
+		std::cout << '\t';
 		auto const rhs_len(this->m_owner->rhs_size());
 		for (std::size_t j(0); j <= rhs_len; ++j)
-			std::cerr << '\t' << '(' << j << ')';
-		std::cerr << '\n';
+			std::cout << '\t' << '(' << j << ')';
+		std::cout << '\n';
 		
-		std::cerr << '\t';
+		std::cout << '\t';
 		auto rhs_it(m_rhs->begin());
 		for (std::size_t j(0); j <= rhs_len; ++j)
 		{
-			std::cerr << '\t';
+			std::cout << '\t';
 			if (j)
 			{
 				detail::to_utf8(*rhs_it++, buffer);
-				std::cerr << buffer;
+				std::cout << buffer;
 			}
 		}
-		std::cerr << '\n';
+		std::cout << '\n';
 		
 		auto lhs_it(m_lhs->begin());
 		auto const lhs_len(this->m_owner->lhs_size());
 		for (std::size_t i(0); i <= lhs_len; ++i)
 		{
-			std::cerr << '(' << i << ")\t";
+			std::cout << '(' << i << ")\t";
 			if (i)
 			{
 				detail::to_utf8(*lhs_it++, buffer);
-				std::cerr << buffer;
+				std::cout << buffer;
 			}
 		
 			for (std::size_t j(0); j <= rhs_len; ++j)
-				std::cerr << '\t' << score_mat(i, j);
-			std::cerr << '\n';
+				std::cout << '\t' << score_mat(i, j);
+			std::cout << '\n';
 		}
 	}
 }}
