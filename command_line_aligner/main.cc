@@ -91,33 +91,43 @@ int main(int argc, char **argv)
 	auto const rhs_input(std::make_tuple(args_info.rhs_arg, args_info.rhs_file_arg));
 	text_align::map_on_stack_fn <string_view_from_input>(
 		[&args_info](std::string_view const &lhsv, std::string_view const &rhsv) {
-			auto const lhsr(ta::make_code_point_iterator_range(lhsv.cbegin(), lhsv.cend()));
-			auto const rhsr(ta::make_code_point_iterator_range(rhsv.cbegin(), rhsv.cend()));
-			auto const lhs_len(copy_distance(lhsr));
-			auto const rhs_len(copy_distance(rhsr));
-			assert(lhsr.begin() != lhsr.end());
-			assert(rhsr.begin() != rhsr.end());
-	
+			
+			ta::alignment_context <std::int32_t, ta::smith_waterman_aligner> ctx;
+			auto &aligner(ctx.aligner());
+			
 			auto const match_score(args_info.match_score_arg);
 			auto const mismatch_penalty(args_info.mismatch_penalty_arg);
 			auto const gap_start_penalty(args_info.gap_start_penalty_arg);
 			auto const gap_penalty(args_info.gap_penalty_arg);
 			bool const print_debugging_information(args_info.print_debugging_information_flag);
-	
-			ta::alignment_context <std::int32_t, ta::smith_waterman_aligner> ctx;
-			auto &aligner(ctx.aligner());
-	
+			
 			aligner.set_identity_score(match_score);
 			aligner.set_mismatch_penalty(mismatch_penalty);
 			aligner.set_gap_start_penalty(gap_start_penalty);
 			aligner.set_gap_penalty(gap_penalty);
 			aligner.set_prints_debugging_information(print_debugging_information);
-			aligner.align(lhsr, rhsr, lhs_len, rhs_len);
-			ctx.run();
-	
-			std::cout << "Score: " << aligner.alignment_score() << std::endl;
-			print_aligned(lhsr, aligner.lhs_gaps());
-			print_aligned(rhsr, aligner.rhs_gaps());
+			
+			if (args_info.align_bytes_flag)
+			{
+				aligner.align(lhsv, rhsv, lhsv.size(), rhsv.size());
+				ctx.run();
+				std::cout << "Score: " << aligner.alignment_score() << std::endl;
+			}
+			else
+			{
+				auto const lhsr(ta::make_code_point_iterator_range(lhsv.cbegin(), lhsv.cend()));
+				auto const rhsr(ta::make_code_point_iterator_range(rhsv.cbegin(), rhsv.cend()));
+				auto const lhs_len(copy_distance(lhsr));
+				auto const rhs_len(copy_distance(rhsr));
+				assert(lhsr.begin() != lhsr.end());
+				assert(rhsr.begin() != rhsr.end());
+				
+				aligner.align(lhsr, rhsr, lhs_len, rhs_len);
+				ctx.run();
+				std::cout << "Score: " << aligner.alignment_score() << std::endl;
+				print_aligned(lhsr, aligner.lhs_gaps());
+				print_aligned(rhsr, aligner.rhs_gaps());
+			}
 		},
 		lhs_input, rhs_input
 	);
