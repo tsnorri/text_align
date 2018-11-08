@@ -34,6 +34,7 @@ namespace text_align { namespace alignment_graph {
 		typedef std::vector <char32_t> code_point_vector;
 		
 	public:
+		virtual ~node_base() {}
 		virtual enum node_type type() const { return node_type::NONE; }
 		virtual void to_json(std::ostream &stream) const override {}
 	};
