@@ -148,7 +148,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		bool const calculate_final_row(argmin_element(lhs_limits.begin(), lhs_limits.end()));
 		bool const calculate_final_column(argmin_element(rhs_limits.begin(), rhs_limits.end()));
 		auto const lhs_limit(*(calculate_final_row + lhs_limits.begin()));
-		auto const rhs_limit(*(calculate_final_row + rhs_limits.begin()));
+		auto const rhs_limit(*(calculate_final_column + rhs_limits.begin()));
 		
 		// Score buffers.
 		auto *src_buffer_ptr(&this->m_data->score_buffer_1);
