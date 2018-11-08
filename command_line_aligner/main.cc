@@ -3,14 +3,18 @@
  * This code is licensed under MIT license (see LICENSE for details).
  */
 
+#include <text_align/algorithm.hh>
+
+#include <boost/dynamic_bitset.hpp>
 #include <boost/locale/utf.hpp>
 #include <boost/range.hpp>
 #include <iostream>
 #include <string>
-#include <text_align/aligner.hh>
 #include <text_align/code_point_iterator.hh>
 #include <text_align/map_on_stack.hh>
 #include <text_align/mmap_handle.hh>
+#include <text_align/smith_waterman/aligner.hh>
+#include <text_align/smith_waterman/alignment_context.hh>
 #include <vector>
 
 #include "cmdline.h"
@@ -26,8 +30,8 @@ std::size_t copy_distance(t_range range)
 }
 
 
-template <typename t_range>
-void print_aligned(t_range const &range, std::vector <bool> const &gaps)
+template <typename t_range, typename t_block>
+void print_aligned(t_range const &range, boost::dynamic_bitset <t_block> const &gaps)
 {
 	//assert(str.size() <= gaps.size());
 	
@@ -37,9 +41,10 @@ void print_aligned(t_range const &range, std::vector <bool> const &gaps)
 	auto ostream_it(std::ostream_iterator <char>(std::cout, ""));
 	// std::ostream_iterator's operator++ is a no-op, hence we don't
 	// save the output value from utf_traits nor use it in else.
-	for (auto const flag : gaps)
+	// boost::dynamic_bitset does not have iterators, so use operator[].
+	for (std::size_t i(0), count(gaps.size()); i < count; ++i)
 	{
-		if (0 == flag)
+		if (0 == gaps[i])
 		{
 			assert(it != end);
 			boost::locale::utf::utf_traits <char>::encode(*it++, ostream_it);
@@ -87,20 +92,45 @@ int main(int argc, char **argv)
 	if (0 != cmdline_parser(argc, argv, &args_info))
 		exit(EXIT_FAILURE);
 	
+	std::ios_base::sync_with_stdio(false);	// Don't use C style IO after calling cmdline_parser.
+	std::cin.tie(nullptr);					// We don't require any input from the user.
+	
+	if (args_info.print_invocation_flag)
+	{
+		std::cerr << "Invocation:";
+		for (std::size_t i(0); i < argc; ++i)
+			std::cerr << ' ' << argv[i];
+		std::cerr << '\n';
+	}
+	
 	auto const lhs_input(std::make_tuple(args_info.lhs_arg, args_info.lhs_file_arg));
 	auto const rhs_input(std::make_tuple(args_info.rhs_arg, args_info.rhs_file_arg));
-	text_align::map_on_stack_fn <string_view_from_input>(
+	ta::map_on_stack_fn <string_view_from_input>(
 		[&args_info](std::string_view const &lhsv, std::string_view const &rhsv) {
 			
-			ta::alignment_context <std::int32_t, ta::smith_waterman_aligner> ctx;
+			ta::smith_waterman::alignment_context <std::int32_t> ctx;
 			auto &aligner(ctx.aligner());
 			
 			auto const match_score(args_info.match_score_arg);
 			auto const mismatch_penalty(args_info.mismatch_penalty_arg);
 			auto const gap_start_penalty(args_info.gap_start_penalty_arg);
 			auto const gap_penalty(args_info.gap_penalty_arg);
+			auto const block_size(args_info.block_size_arg);
 			bool const print_debugging_information(args_info.print_debugging_information_flag);
 			
+			if (block_size < 0)
+			{
+				std::cerr << "Block size needs to be non-negative." << std::endl;
+				exit(EXIT_FAILURE);
+			}
+			
+			if (0 != block_size % 64)
+			{
+				std::cerr << "Block size needs to be a multiple of 64." << std::endl;
+				exit(EXIT_FAILURE);
+			}
+			
+			aligner.set_segment_length(block_size);
 			aligner.set_identity_score(match_score);
 			aligner.set_mismatch_penalty(mismatch_penalty);
 			aligner.set_gap_start_penalty(gap_start_penalty);
