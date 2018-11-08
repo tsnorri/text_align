@@ -24,4 +24,4 @@ text_align: $(OBJECTS)
 %.c: %.ggo
 	$(GENGETOPT) --input="$<"
 
-main.c: cmdline.c
+main.cc: cmdline.c
