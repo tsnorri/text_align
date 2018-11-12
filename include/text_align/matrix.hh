@@ -116,6 +116,9 @@ namespace text_align { namespace detail {
 	template <typename t_matrix>
 	class matrix_element_reference
 	{
+	public:
+		typedef typename t_matrix::word_type word_type;
+		
 	protected:
 		t_matrix	*m_matrix{nullptr};
 		std::size_t	m_x{0};
@@ -131,8 +134,8 @@ namespace text_align { namespace detail {
 		}
 		
 		operator std::uint8_t() const { return m_matrix->fetch(m_y, m_x); }
-		matrix_element_reference &operator=(std::uint64_t const val) { m_matrix->fetch_or(m_y, m_x, val); return *this; }
-		std::uint64_t fetch_or(std::uint64_t const val) { return m_matrix->fetch_or(m_y, m_x, val); }
+		matrix_element_reference &operator=(word_type const val) { m_matrix->fetch_or(m_y, m_x, val); return *this; }
+		word_type fetch_or(word_type const val) { return m_matrix->fetch_or(m_y, m_x, val); }
 	};
 	
 	
@@ -243,21 +246,26 @@ namespace text_align {
 	
 	// Store elements of 2^k bits where k = 0, 1, 2.
 	// Specialize only operator() for now.
-	template <std::uint8_t t_bits>
-	class compressed_atomic_matrix : public matrix <std::atomic_uint64_t>
+	template <std::uint8_t t_bits, typename t_word = std::uint64_t>
+	class compressed_atomic_matrix : public matrix <std::atomic <t_word>>
 	{
 		static_assert(1 == t_bits || 2 == t_bits || 4 == t_bits);
+		static_assert(std::is_unsigned_v <t_word>);
 		
 		friend class detail::matrix_slice <compressed_atomic_matrix>;
 		friend class detail::matrix_element_reference <compressed_atomic_matrix>;
 		
+	public:
+		typedef t_word														word_type;
+		enum { WORD_BITS = CHAR_BIT * sizeof(word_type) };
+		
 	protected:
-		typedef matrix <std::atomic_uint64_t>								superclass;
+		typedef matrix <std::atomic <word_type>>							superclass;
 		typedef detail::matrix_element_reference <compressed_atomic_matrix>	reference_proxy;
 		
 	public:
 		enum {
-			SUBELEMENT_COUNT	= 64 / t_bits,
+			SUBELEMENT_COUNT	= WORD_BITS / t_bits,
 			SUBELEMENT_MASK		= (std::numeric_limits <uint8_t>::max() >> (8 - t_bits))
 		};
 		
@@ -265,15 +273,15 @@ namespace text_align {
 		typedef detail::matrix_slice <compressed_atomic_matrix const>		const_slice_type;
 		
 	protected:
-		std::uint64_t fetch(std::size_t const y, std::size_t const x) const;
-		std::uint64_t fetch_or(std::size_t const row, std::size_t const col, std::uint64_t const val);
-		void assign(std::size_t const y, std::size_t const x, std::uint64_t const val);
+		word_type fetch(std::size_t const y, std::size_t const x) const;
+		word_type fetch_or(std::size_t const row, std::size_t const col, word_type const val);
+		void assign(std::size_t const y, std::size_t const x, word_type const val);
 		
 	public:
 		using matrix::matrix;
 		
-		std::uint64_t value_at(std::size_t const y, std::size_t const x) const { return fetch(y, x); };
-		std::uint64_t operator()(std::size_t const y, std::size_t const x) const { return value_at(y, x); };
+		word_type value_at(std::size_t const y, std::size_t const x) const { return fetch(y, x); };
+		word_type operator()(std::size_t const y, std::size_t const x) const { return value_at(y, x); };
 		reference_proxy operator()(std::size_t const y, std::size_t const x) { return reference_proxy(*this, y, x); }
 		
 		// FIXME: rename these to block_* or something similar.
@@ -321,6 +329,7 @@ namespace text_align {
 	}
 	
 	
+	// FIXME: handle t_word in paramters.
 	template <typename t_dst_value, typename t_src_value>
 	void transpose_column_to_row(
 		detail::matrix_slice <matrix <t_dst_value>> &&dst,
@@ -331,6 +340,7 @@ namespace text_align {
 	}
 	
 	
+	// FIXME: handle t_word in paramters.
 	template <typename t_dst_value, typename t_src_value>
 	void transpose_column_to_row(
 		detail::matrix_slice <matrix <t_dst_value>> &&dst,
@@ -341,6 +351,7 @@ namespace text_align {
 	}
 	
 	
+	// FIXME: handle t_word in paramters.
 	template <std::uint8_t t_bits, typename t_value>
 	void transpose_column_to_row(
 		detail::matrix_slice <compressed_atomic_matrix <t_bits>> &&dst,
@@ -351,6 +362,7 @@ namespace text_align {
 	}
 	
 	
+	// FIXME: handle t_word in paramters.
 	template <std::uint8_t t_bits>
 	void transpose_column_to_row(
 		detail::matrix_slice <compressed_atomic_matrix <t_bits>> &&dst,
@@ -387,18 +399,19 @@ namespace text_align {
 	}
 	
 	
+	// FIXME: handle t_word in parameters.
 	template <std::uint8_t t_bits, typename t_value>
 	void transpose_column_to_row(
 		detail::matrix_slice <compressed_atomic_matrix <t_bits>> &dst,
 		detail::matrix_slice <matrix <t_value>> const &src
 	)
 	{
-		uint64_t mask(1);
+		word_type mask(1);
 		mask <<= t_bits;
 		--mask;
 		
 		auto const length(dst.size());
-		assert(src.size() * (64 / t_bits) <= length);
+		assert(src.size() * (WORD_BITS / t_bits) <= length);
 		auto src_it(src.cbegin());
 		for (std::size_t i(0); i < length; ++i)
 		{
@@ -409,23 +422,23 @@ namespace text_align {
 	}
 	
 	
-	template <std::uint8_t t_bits>
+	template <std::uint8_t t_bits, typename t_word>
 	void transpose_column_to_row(
 		detail::matrix_slice <compressed_atomic_matrix <t_bits>> &dst,
 		detail::matrix_slice <compressed_atomic_matrix <t_bits>> const &src
 	)
 	{
-		uint64_t mask(1);
+		word_type mask(1);
 		mask <<= t_bits;
 		--mask;
 		
 		auto const length(dst.size());
-		assert(src.size() * (64 / t_bits) <= length);
+		assert(src.size() * (WORD_BITS / t_bits) <= length);
 		auto src_it(src.cbegin());
-		uint64_t val(0);
+		word_type val(0);
 		for (std::size_t i(0); i < length; ++i)
 		{
-			if (0 == i % (64 / t_bits))
+			if (0 == i % (WORD_BITS / t_bits))
 				val = *src_it++;
 			
 			dst[i].fetch_or(val & mask);
@@ -435,15 +448,22 @@ namespace text_align {
 	
 	
 	template <typename t_slice>
-	void fill_column_with_2_bit_pattern(t_slice &column, std::uint64_t pattern)
+	void fill_column_with_2_bit_pattern(t_slice &column, word_type pattern)
 	{
 		// Fill one word at a time.
 		pattern |= pattern << 2;
 		pattern |= pattern << 4;
+		if (8 == WORD_BITS)
+			goto do_fill;
 		pattern |= pattern << 8;
+		if (16 == WORD_BITS)
+			goto do_fill;
 		pattern |= pattern << 16;
+		if (32 == WORD_BITS)
+			goto do_fill;
 		pattern |= pattern << 32;
 		
+	do_fill:
 		std::fill(column.begin(), column.end(), pattern);
 	}
 	
@@ -485,20 +505,20 @@ namespace text_align {
 	}
 	
 	
-	template <std::uint8_t t_bits>
-	std::uint64_t compressed_atomic_matrix <t_bits>::fetch(std::size_t const row, std::size_t const col) const
+	template <std::uint8_t t_bits, typename t_word>
+	auto compressed_atomic_matrix <t_bits>::fetch(std::size_t const row, std::size_t const col) const -> word_type
 	{
 		auto const shift_amt(row % SUBELEMENT_COUNT * t_bits);
 		auto const y(row / SUBELEMENT_COUNT);
-		uint64_t val(superclass::operator()(y, col)); // Atomic.
+		word_type val(superclass::operator()(y, col)); // Atomic.
 		val >>= shift_amt;
 		val &= SUBELEMENT_MASK;
 		return val;
 	}
 	
 	
-	template <std::uint8_t t_bits>
-	std::uint64_t compressed_atomic_matrix <t_bits>::fetch_or(std::size_t const row, std::size_t const col, std::uint64_t val)
+	template <std::uint8_t t_bits, typename t_word>
+	auto compressed_atomic_matrix <t_bits>::fetch_or(std::size_t const row, std::size_t const col, word_type val) -> word_type
 	{
 		assert(val <= SUBELEMENT_MASK);
 		auto const shift_amt(row % SUBELEMENT_COUNT * t_bits);
