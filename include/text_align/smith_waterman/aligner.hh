@@ -230,13 +230,13 @@ namespace text_align { namespace smith_waterman {
 			row[0] |= arrow_type::ARROW_FINISH;
 			
 			// Again, two bits for each arrow.
-			auto const segment_words_along_y(segments_along_y * std::ceil(m_parameters.segment_length / 32.0));
+			auto const segment_words_along_y(std::ceil(m_parameters.segment_length / 32.0));
 			initialize_atomic_matrix(m_data.traceback, segment_words_along_y, m_parameters.segment_length);
 			std::fill(m_data.traceback.begin(), m_data.traceback.end(), 0);
 		}
 		
 		{
-			auto const segment_words_along_y(segments_along_y * std::ceil(m_parameters.segment_length / 32.0));
+			auto const segment_words_along_y(std::ceil(m_parameters.segment_length / 32.0));
 			initialize_atomic_matrix(m_data.gap_score_gt, segment_words_along_y, m_parameters.segment_length);
 			std::fill(m_data.gap_score_gt.begin(), m_data.gap_score_gt.end(), 0);
 		}
