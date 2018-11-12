@@ -6,6 +6,9 @@
 #ifndef TEXT_ALIGN_SMITH_WATERMAN_MATRIX_PRINTER_HH
 #define TEXT_ALIGN_SMITH_WATERMAN_MATRIX_PRINTER_HH
 
+#include <boost/iostreams/device/back_inserter.hpp>
+#include <boost/iostreams/stream.hpp>
+#include <iterator>
 #include <text_align/smith_waterman/aligner_base.hh>
 
 
@@ -68,10 +71,12 @@ namespace text_align { namespace smith_waterman { namespace detail {
 	{
 		std::cerr << "\t\t";
 		auto rhs_it(m_rhs_it); // Copy.
+		std::ostream_iterator <char> out_it(std::cerr);
 		for (std::size_t i(1); i < m_columns; ++i)
 		{
 			auto const rhs_c(*rhs_it++);
-			std::cerr << '\t' << static_cast <char const>(rhs_c);
+			std::cerr << '\t';
+			boost::locale::utf::utf_traits <char, 1>::encode(rhs_c, out_it);
 		}
 		std::cerr << '\n';
 		
@@ -125,26 +130,28 @@ namespace text_align { namespace smith_waterman { namespace detail {
 	template <typename t_score>
 	void matrix_printer <t_lhs_it, t_rhs_it>::print_scores(matrix <t_score> const &scores)
 	{
-		//namespace io = boost::iostreams;
-		//typedef std::vector <char> buffer_type;
-		//typedef io::stream <io::back_insert_device <buffer_type>> buffer_stream;
+		namespace io = boost::iostreams;
+		typedef std::vector <char> buffer_type;
+		typedef io::stream <io::back_insert_device <buffer_type>> buffer_stream;
 
 		m_gap_idx = 0;
 		m_path_x = 0;
 		m_path_y = 0;
 		
 		print_header();
-		char current_char(' ');
 		auto lhs_it(m_lhs_it); // Copy.
 		
-		//buffer_type buffer;
-		//buffer_stream os(buffer);
+		buffer_type buffer;
+		buffer_stream os(buffer);
+		std::ostream_iterator <char> out_it(std::cerr);
 		
 		for (std::size_t j(0); j < m_rows; ++j)
 		{
 			if (j)
-				current_char = *lhs_it++;
-			std::cerr << current_char << '\t' << j;
+				boost::locale::utf::utf_traits <char, 1>::encode(*lhs_it++, out_it);
+			else
+				std::cerr << " \t" << j;
+
 			for (std::size_t i(0); i < m_columns; ++i)
 			{
 				std::cerr << '\t';
@@ -154,9 +161,36 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				auto const current_score(scores(j, i));
 				
 				if (on_path)
-					std::cerr << "\033[31m" << current_score << "\033[0m";
+				{
+					// FIXME: colorize output when the target is a suitable terminal instead of using the keycap characters?
+					//std::cerr << "\033[31m" << current_score << "\033[0m";
+					buffer.clear();
+					os << current_score << std::flush;
+					for (auto const c : buffer)
+					{
+						// FIXME: the underline is probably not needed.
+						//std::cerr << c << u8"\u0332";
+						
+						switch (c)
+						{
+							case '0': std::cerr << u8"0️⃣"; break;
+							case '1': std::cerr << u8"1️⃣"; break;
+							case '2': std::cerr << u8"2️⃣"; break;
+							case '3': std::cerr << u8"3️⃣"; break;
+							case '4': std::cerr << u8"4️⃣"; break;
+							case '5': std::cerr << u8"5️⃣"; break;
+							case '6': std::cerr << u8"6️⃣"; break;
+							case '7': std::cerr << u8"7️⃣"; break;
+							case '8': std::cerr << u8"8️⃣"; break;
+							case '9': std::cerr << u8"9️⃣"; break;
+							default: std::cerr << c; break;
+						}
+					}
+				}
 				else
+				{
 					std::cerr << current_score;
+				}
 			}
 			std::cerr << '\n';
 		}
@@ -171,13 +205,15 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		m_path_y = 0;
 		
 		print_header();
-		char current_char(' ');
 		auto lhs_it(m_lhs_it); // Copy.
+		std::ostream_iterator <char> out_it(std::cerr);
 		for (std::size_t j(0); j < m_rows; ++j)
 		{
 			if (j)
-				current_char = *lhs_it++;
-			std::cerr << current_char << '\t' << j;
+				boost::locale::utf::utf_traits <char, 1>::encode(*lhs_it++, out_it);
+			else
+				std::cerr << " \t" << j;
+			
 			for (std::size_t i(0); i < m_columns; ++i)
 			{
 				std::cerr << '\t';
@@ -190,19 +226,19 @@ namespace text_align { namespace smith_waterman { namespace detail {
 					switch (arrow)
 					{
 						case arrow_type::ARROW_DIAGONAL:
-							std::cerr << "↖️";
+							std::cerr << u8"↖️";
 							break;
 							
 						case arrow_type::ARROW_LEFT:
-							std::cerr << "⬅️";
+							std::cerr << u8"⬅️";
 							break;
 							
 						case arrow_type::ARROW_UP:
-							std::cerr << "⬆️";
+							std::cerr << u8"⬆️";
 							break;
 							
 						case arrow_type::ARROW_FINISH:
-							std::cerr << "✳️";
+							std::cerr << u8"✳️";
 							break;
 							
 						default:
@@ -219,11 +255,11 @@ namespace text_align { namespace smith_waterman { namespace detail {
 							break;
 							
 						case arrow_type::ARROW_LEFT:
-							std::cerr << "←";
+							std::cerr << u8"←";
 							break;
 							
 						case arrow_type::ARROW_UP:
-							std::cerr << "↑";
+							std::cerr << u8"↑";
 							break;
 							
 						case arrow_type::ARROW_FINISH:
