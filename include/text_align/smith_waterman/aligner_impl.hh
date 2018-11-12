@@ -207,7 +207,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				// Store the traceback value if needed.
 				if (!t_initial)
 				{
-					auto const y(1 + j);
+					auto const y(1 + j - lhs_idx);
 					auto const x(1 + i - rhs_idx);
 					this->m_data->traceback(y, x)		= result.max_idx;
 					this->m_data->gap_score_gt(y, x)	= result.is_gap_score_gt;
