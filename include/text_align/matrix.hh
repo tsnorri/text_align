@@ -10,8 +10,9 @@
 #include <boost/range.hpp>
 #include <iterator>
 #include <text_align/assert.hh>
+#include <text_align/matrix_slice.hh>
+#include <text_align/matrix_utils.hh>
 #include <type_traits>
-#include <valarray>
 #include <vector>
 
 
@@ -30,7 +31,7 @@ namespace text_align { namespace detail {
 		typedef typename std::iterator_traits <t_iterator>::reference		iterator_reference_type;
 		
 	public:
-		typedef typename std::remove_reference_t <iterator_reference_type> 	value_type;
+		typedef typename std::remove_reference_t <iterator_reference_type>	value_type;
 		
 	private:
 		t_iterator			m_it{};
@@ -38,7 +39,7 @@ namespace text_align { namespace detail {
 
 	public:
 		matrix_iterator() = default;
-
+		
 		matrix_iterator(t_iterator it, std::size_t stride):
 			m_it(it),
 			m_stride(stride)
@@ -58,6 +59,7 @@ namespace text_align { namespace detail {
 		value_type &dereference() const { return *m_it; }
 		bool equal(matrix_iterator const &other) const { return m_it == other.m_it && m_stride == other.m_stride; }
 		void increment() { advance(1); }
+		void decrement() { advance(-1); }
 		void advance(std::ptrdiff_t const diff) { std::advance(m_it, m_stride * diff); }
 		
 		std::ptrdiff_t distance_to(matrix_iterator const &other) const
@@ -71,78 +73,6 @@ namespace text_align { namespace detail {
 	
 	template <typename t_iterator>
 	std::ostream &operator<<(std::ostream &stream, matrix_iterator <t_iterator> const &it) { stream << "(matrix iterator)"; return stream; }
-	
-	
-	template <typename t_matrix>
-	class matrix_slice
-	{
-	public:
-		typedef t_matrix										matrix_type;
-		typedef typename matrix_type::value_type				value_type;
-		typedef typename matrix_type::iterator					matrix_iterator;
-		typedef typename matrix_type::const_iterator			const_matrix_iterator;
-		typedef boost::iterator_range <matrix_iterator>			matrix_iterator_range;
-		typedef boost::iterator_range <const_matrix_iterator>	const_matrix_iterator_range;
-		
-	protected:
-		t_matrix	*m_matrix{nullptr};
-		std::slice	m_slice{};
-		
-	public:
-		matrix_slice() = default;
-		matrix_slice(t_matrix &matrix, std::slice const &slice):
-			m_matrix(&matrix),
-			m_slice(slice)
-		{
-		}
-		
-		std::size_t size() const { return m_slice.size(); }
-		
-		value_type &operator[](std::size_t const idx) { return *(begin() + idx); }
-		value_type const &operator[](std::size_t const idx) const { return *(begin() + idx); }
-		
-		matrix_iterator begin() { return matrix_iterator(m_matrix->begin() + m_slice.start(), m_slice.stride()); }
-		matrix_iterator end() { return matrix_iterator(m_matrix->begin() + m_slice.start() + m_slice.size() * m_slice.stride(), m_slice.stride()); }
-		matrix_iterator range() { return boost::make_iterator_range(begin(), end()); }
-		const_matrix_iterator begin() const { return cbegin(); }
-		const_matrix_iterator end() const { return cend(); }
-		const_matrix_iterator_range range() const { return const_range(); }
-		const_matrix_iterator cbegin() const { return const_matrix_iterator(m_matrix->cbegin() + m_slice.start(), m_slice.stride()); }
-		const_matrix_iterator cend() const { return const_matrix_iterator(m_matrix->cbegin() + m_slice.start() + m_slice.size() * m_slice.stride(), m_slice.stride()); }
-		const_matrix_iterator_range const_range() const { return boost::make_iterator_range(cbegin(), cend()); }
-	};
-	
-	
-	template <typename t_matrix>
-	class matrix_element_reference
-	{
-	public:
-		typedef typename t_matrix::word_type word_type;
-		
-	protected:
-		t_matrix	*m_matrix{nullptr};
-		std::size_t	m_x{0};
-		std::size_t	m_y{0};
-		
-	public:
-		matrix_element_reference() = delete;
-		matrix_element_reference(t_matrix &matrix, std::size_t const y, std::size_t const x):
-			m_matrix(&matrix),
-			m_x(x),
-			m_y(y)
-		{
-		}
-		
-		operator std::uint8_t() const { return m_matrix->fetch(m_y, m_x); }
-		matrix_element_reference &operator=(word_type const val) { m_matrix->fetch_or(m_y, m_x, val); return *this; }
-		word_type fetch_or(word_type const val) { return m_matrix->fetch_or(m_y, m_x, val); }
-	};
-	
-	
-	template <typename t_matrix> typename t_matrix::slice_type row(t_matrix &matrix, std::size_t const row, std::size_t const first, std::size_t const limit);
-	template <typename t_matrix> typename t_matrix::slice_type column(t_matrix &matrix, std::size_t const column, std::size_t const first, std::size_t const limit);
-	template <typename t_matrix> typename t_matrix::const_slice_type const_row(t_matrix const &matrix, std::size_t const row, std::size_t const first, std::size_t const limit);
-	template <typename t_matrix> typename t_matrix::const_slice_type const_column(t_matrix const &matrix, std::size_t const column, std::size_t const first, std::size_t const limit);
 }}
 
 
@@ -154,22 +84,30 @@ namespace text_align {
 	class matrix
 	{
 		friend class detail::matrix_slice <matrix>;
-		friend class detail::matrix_element_reference <matrix>;
 		
 	public:
 		typedef t_value											value_type;
+		
+	protected:
 		typedef std::vector <value_type>						vector_type;
-		typedef typename vector_type::iterator					vector_iterator;
-		typedef typename vector_type::const_iterator			const_vector_iterator;
-		typedef detail::matrix_iterator <vector_iterator>		iterator;
-		typedef detail::matrix_iterator <const_vector_iterator>	const_iterator;
+		
+	public:
+		typedef typename vector_type::reference					reference;
+		typedef typename vector_type::const_reference			const_reference;
+		
+		typedef typename vector_type::iterator					iterator;
+		typedef typename vector_type::const_iterator			const_iterator;
+		
+		typedef detail::matrix_iterator <iterator>				matrix_iterator;
+		typedef detail::matrix_iterator <const_iterator>		const_matrix_iterator;
+		
 		typedef detail::matrix_slice <matrix>					slice_type;
 		typedef detail::matrix_slice <matrix const>				const_slice_type;
 		
 	protected:
-		std::vector <value_type>	m_values;
+		std::vector <value_type>	m_data;
 #ifndef NDEBUG
-		std::size_t					m_columns{0};
+		std::size_t					m_columns{};
 #endif
 		std::size_t					m_stride{1};
 		
@@ -178,18 +116,8 @@ namespace text_align {
 		
 	public:
 		matrix() = default;
-		matrix(std::size_t const rows, std::size_t const columns, value_type const val):
-			m_values(columns * rows, val),
-#ifndef NDEBUG
-			m_columns(columns),
-#endif
-			m_stride(rows)
-		{
-			assert(m_stride);
-		}
-		
 		matrix(std::size_t const rows, std::size_t const columns):
-			m_values(columns * rows),
+			m_data(columns * rows, 0),
 #ifndef NDEBUG
 			m_columns(columns),
 #endif
@@ -203,123 +131,50 @@ namespace text_align {
 			/* Column major order. */
 			assert(y < m_stride);
 			assert(x < m_columns);
-			assert(x < m_values.size() / m_stride);
+			assert(x < m_data.size() / m_stride);
 			std::size_t const retval(x * m_stride + y);
-			assert(retval < m_values.size());
+			assert(retval < m_data.size());
 			return retval;
 		}
 		
-		std::size_t const size() const { return m_values.size(); }
-		std::size_t const column_size() const { return m_values.size() / m_stride; }
-		std::size_t const row_size() const { return m_stride; }
+		value_type &operator()(std::size_t const y, std::size_t const x) { return m_data[idx(y, x)]; }
+		value_type const &operator()(std::size_t const y, std::size_t const x) const { return m_data[idx(y, x)]; }
+		
+		std::size_t const size() const { return m_data.size(); }
+		std::size_t const number_of_columns() const { return m_data.size() / m_stride; }
+		std::size_t const number_of_rows() const { return m_stride; }
 		std::size_t const stride() const { return m_stride; }
 		void resize(std::size_t const rows, std::size_t const cols) { resize_if_needed(rows, cols); }
-		void resize(std::size_t const size) { m_values.resize(size); }
-		void set_stride(std::size_t const stride) { always_assert(0 == m_values.size() % m_stride); m_stride = stride; }
-		value_type &operator()(std::size_t const y, std::size_t const x) { return m_values[idx(y, x)]; }
-		value_type const &operator()(std::size_t const y, std::size_t const x) const { return m_values[idx(y, x)]; }
-		slice_type row(std::size_t const row, std::size_t const first = 0)												{ return detail::row <matrix>			(*this, row, first, this->column_size()); }
-		slice_type column(std::size_t const column, std::size_t const first = 0)										{ return detail::column <matrix>		(*this, column, first, this->row_size()); }
-		slice_type row(std::size_t const row, std::size_t const first, std::size_t const limit)							{ return detail::row <matrix>			(*this, row, first, limit); }
-		slice_type column(std::size_t const column, std::size_t const first, std::size_t const limit)					{ return detail::column <matrix>		(*this, column, first, limit); }
-		const_slice_type row(std::size_t const row, std::size_t const first = 0) const									{ return detail::const_row <matrix>		(*this, row, first, this->column_size()); }
-		const_slice_type column(std::size_t const column, std::size_t const first = 0) const							{ return detail::const_column <matrix>	(*this, column, first, this->row_size()); }
-		const_slice_type row(std::size_t const row, std::size_t const first, std::size_t const limit) const				{ return detail::const_row <matrix>		(*this, row, first, limit); }
-		const_slice_type column(std::size_t const column, std::size_t const first, std::size_t const limit) const		{ return detail::const_column <matrix>	(*this, column, first, limit); }
-		const_slice_type const_row(std::size_t const row, std::size_t const first = 0) const							{ return detail::const_row <matrix>		(*this, row, first, this->column_size()); }
-		const_slice_type const_column(std::size_t const column, std::size_t const first = 0) const						{ return detail::const_column <matrix>	(*this, column, first, this->row_size()); }
-		const_slice_type const_row(std::size_t const row, std::size_t const first, std::size_t const limit) const		{ return detail::const_row <matrix>		(*this, row, first, limit); }
-		const_slice_type const_column(std::size_t const column, std::size_t const first, std::size_t const limit) const	{ return detail::const_column <matrix>	(*this, column, first, limit); }
-		vector_iterator begin() { return m_values.begin(); }
-		vector_iterator end() { return m_values.end(); }
-		const_vector_iterator begin() const { return m_values.cbegin(); }
-		const_vector_iterator end() const { return m_values.cend(); }
-		const_vector_iterator cbegin() const { return m_values.cbegin(); }
-		const_vector_iterator cend() const { return m_values.cend(); }
+		void resize(std::size_t const size) { m_data.resize(size); }
+		void set_stride(std::size_t const stride) { always_assert(0 == m_data.size() % m_stride); m_stride = stride; }
 		
 		template <typename t_fn>
 		void apply(t_fn &&fn);
 		
 		void swap(matrix &rhs);
+		
+		// Iterators.
+		iterator begin() { return m_data.begin(); }
+		iterator end() { return m_data.end(); }
+		const_iterator begin() const { return m_data.cbegin(); }
+		const_iterator end() const { return m_data.cend(); }
+		const_iterator cbegin() const { return m_data.cbegin(); }
+		const_iterator cend() const { return m_data.cend(); }
+		
+		// Slices.
+		slice_type row(std::size_t const row, std::size_t const first = 0)												{ return matrices::row(*this, row, first, this->number_of_columns()); }
+		slice_type column(std::size_t const column, std::size_t const first = 0)										{ return matrices::column(*this, column, first, this->number_of_rows()); }
+		slice_type row(std::size_t const row, std::size_t const first, std::size_t const limit)							{ return matrices::row(*this, row, first, limit); }
+		slice_type column(std::size_t const column, std::size_t const first, std::size_t const limit)					{ return matrices::column(*this, column, first, limit); }
+		const_slice_type row(std::size_t const row, std::size_t const first = 0) const									{ return matrices::const_row(*this, row, first, this->number_of_columns()); }
+		const_slice_type column(std::size_t const column, std::size_t const first = 0) const							{ return matrices::const_column(*this, column, first, this->number_of_rows()); }
+		const_slice_type row(std::size_t const row, std::size_t const first, std::size_t const limit) const				{ return matrices::const_row(*this, row, first, limit); }
+		const_slice_type column(std::size_t const column, std::size_t const first, std::size_t const limit) const		{ return matrices::const_column(*this, column, first, limit); }
+		const_slice_type const_row(std::size_t const row, std::size_t const first = 0) const							{ return matrices::const_row(*this, row, first, this->number_of_columns()); }
+		const_slice_type const_column(std::size_t const column, std::size_t const first = 0) const						{ return matrices::const_column(*this, column, first, this->number_of_rows()); }
+		const_slice_type const_row(std::size_t const row, std::size_t const first, std::size_t const limit) const		{ return matrices::const_row(*this, row, first, limit); }
+		const_slice_type const_column(std::size_t const column, std::size_t const first, std::size_t const limit) const	{ return matrices::const_column(*this, column, first, limit); }
 	};
-	
-	
-	// Store elements of 2^k bits where k = 0, 1, 2.
-	// Specialize only operator() for now.
-	template <std::uint8_t t_bits, typename t_word = std::uint64_t>
-	class compressed_atomic_matrix : public matrix <std::atomic <t_word>>
-	{
-		static_assert(1 == t_bits || 2 == t_bits || 4 == t_bits);
-		static_assert(std::is_unsigned_v <t_word>);
-		
-		friend class detail::matrix_slice <compressed_atomic_matrix>;
-		friend class detail::matrix_element_reference <compressed_atomic_matrix>;
-		
-	public:
-		typedef t_word														word_type;
-		enum { WORD_BITS = CHAR_BIT * sizeof(word_type) };
-		
-	protected:
-		typedef matrix <std::atomic <word_type>>							superclass;
-		typedef detail::matrix_element_reference <compressed_atomic_matrix>	reference_proxy;
-		
-	public:
-		enum {
-			SUBELEMENT_COUNT	= WORD_BITS / t_bits,
-			SUBELEMENT_MASK		= (std::numeric_limits <uint8_t>::max() >> (8 - t_bits))
-		};
-		
-		typedef detail::matrix_slice <compressed_atomic_matrix>				slice_type;
-		typedef detail::matrix_slice <compressed_atomic_matrix const>		const_slice_type;
-		
-	protected:
-		word_type fetch(std::size_t const y, std::size_t const x) const;
-		word_type fetch_or(std::size_t const row, std::size_t const col, word_type const val);
-		void assign(std::size_t const y, std::size_t const x, word_type const val);
-		
-	public:
-		using matrix::matrix;
-		
-		word_type value_at(std::size_t const y, std::size_t const x) const { return fetch(y, x); };
-		word_type operator()(std::size_t const y, std::size_t const x) const { return value_at(y, x); };
-		reference_proxy operator()(std::size_t const y, std::size_t const x) { return reference_proxy(*this, y, x); }
-		
-		// FIXME: rename these to block_* or something similar.
-		slice_type row(std::size_t const row, std::size_t const first = 0)												{ return detail::row <compressed_atomic_matrix>				(*this, row, first, this->column_size()); }
-		slice_type column(std::size_t const column, std::size_t const first = 0)										{ return detail::column <compressed_atomic_matrix>			(*this, column, first, this->row_size()); }
-		slice_type row(std::size_t const row, std::size_t const first, std::size_t const limit)							{ return detail::row <compressed_atomic_matrix>				(*this, row, first, limit); }
-		slice_type column(std::size_t const column, std::size_t const first, std::size_t const limit)					{ return detail::column <compressed_atomic_matrix>			(*this, column, first, limit); }
-		const_slice_type row(std::size_t const row, std::size_t const first = 0) const									{ return detail::const_row <compressed_atomic_matrix>		(*this, row, first, this->column_size()); }
-		const_slice_type column(std::size_t const column, std::size_t const first = 0) const							{ return detail::const_column <compressed_atomic_matrix>	(*this, column, first, this->row_size()); }
-		const_slice_type row(std::size_t const row, std::size_t const first, std::size_t const limit) const				{ return detail::const_row <compressed_atomic_matrix>		(*this, row, first, limit); }
-		const_slice_type column(std::size_t const column, std::size_t const first, std::size_t const limit) const		{ return detail::const_column <compressed_atomic_matrix>	(*this, column, first, limit); }
-		const_slice_type const_row(std::size_t const row, std::size_t const first = 0) const							{ return detail::const_row <compressed_atomic_matrix>		(*this, row, first, this->column_size()); }
-		const_slice_type const_column(std::size_t const column, std::size_t const first = 0) const						{ return detail::const_column <compressed_atomic_matrix>	(*this, column, first, this->row_size()); }
-		const_slice_type const_row(std::size_t const row, std::size_t const first, std::size_t const limit) const		{ return detail::const_row <compressed_atomic_matrix>		(*this, row, first, limit); }
-		const_slice_type const_column(std::size_t const column, std::size_t const first, std::size_t const limit) const	{ return detail::const_column <compressed_atomic_matrix>	(*this, column, first, limit); }
-	};
-	
-	
-	template <typename t_matrix>
-	void initialize_atomic_matrix(t_matrix &matrix, std::size_t const rows, std::size_t const cols)
-	{
-		using std::swap;
-		
-		auto const row_size(matrix.row_size());
-		auto const column_size(matrix.column_size());
-		if (row_size < rows || column_size < cols)
-		{
-			if (matrix.size() < rows * cols)
-			{
-				t_matrix temp(rows, cols);
-				swap(matrix, temp);
-			}
-			else
-			{
-				matrix.set_stride(rows);
-			}
-		}
-	}
 	
 	
 	template <typename t_value>
@@ -329,149 +184,10 @@ namespace text_align {
 	}
 	
 	
-	// FIXME: handle t_word in paramters.
-	template <typename t_dst_value, typename t_src_value>
-	void transpose_column_to_row(
-		detail::matrix_slice <matrix <t_dst_value>> &&dst,
-		detail::matrix_slice <matrix <std::atomic <t_src_value>>> const &src
-	)
-	{
-		transpose_column_to_row(dst, src);
-	}
-	
-	
-	// FIXME: handle t_word in paramters.
-	template <typename t_dst_value, typename t_src_value>
-	void transpose_column_to_row(
-		detail::matrix_slice <matrix <t_dst_value>> &&dst,
-		detail::matrix_slice <matrix <t_src_value>> const &src
-	)
-	{
-		transpose_column_to_row(dst, src);
-	}
-	
-	
-	// FIXME: handle t_word in paramters.
-	template <std::uint8_t t_bits, typename t_value>
-	void transpose_column_to_row(
-		detail::matrix_slice <compressed_atomic_matrix <t_bits>> &&dst,
-		detail::matrix_slice <matrix <t_value>> const &src
-	)
-	{
-		transpose_column_to_row(dst, src);
-	}
-	
-	
-	// FIXME: handle t_word in paramters.
-	template <std::uint8_t t_bits>
-	void transpose_column_to_row(
-		detail::matrix_slice <compressed_atomic_matrix <t_bits>> &&dst,
-		detail::matrix_slice <compressed_atomic_matrix <t_bits>> const &src
-	)
-	{
-		transpose_column_to_row(dst, src);
-	}
-	
-	
-	// std::atomic has a deleted copy assignment operator in the case where the source is also an atomic.
-	// We would always like to have load followed by a store, so specialize transpose_column_to_row.
-	template <typename t_dst_value, typename t_src_value>
-	void transpose_column_to_row(
-		detail::matrix_slice <matrix <t_dst_value>> &dst,
-		detail::matrix_slice <matrix <std::atomic <t_src_value>>> const &src
-	)
-	{
-		auto const length(dst.size());
-		assert(src.size() <= length);
-		std::transform(src.cbegin(), src.cend(), dst.begin(), [](auto &atomic){ return atomic.load(); });
-	}
-	
-	
-	template <typename t_dst_value, typename t_src_value>
-	void transpose_column_to_row(
-		detail::matrix_slice <matrix <t_dst_value>> &dst,
-		detail::matrix_slice <matrix <t_src_value>> const &src
-	)
-	{
-		auto const length(dst.size());
-		assert(src.size() <= length);
-		std::copy(src.cbegin(), src.cend(), dst.begin());
-	}
-	
-	
-	// FIXME: handle t_word in parameters.
-	template <std::uint8_t t_bits, typename t_value>
-	void transpose_column_to_row(
-		detail::matrix_slice <compressed_atomic_matrix <t_bits>> &dst,
-		detail::matrix_slice <matrix <t_value>> const &src
-	)
-	{
-		word_type mask(1);
-		mask <<= t_bits;
-		--mask;
-		
-		auto const length(dst.size());
-		assert(src.size() * (WORD_BITS / t_bits) <= length);
-		auto src_it(src.cbegin());
-		for (std::size_t i(0); i < length; ++i)
-		{
-			auto const val(*src_it++);
-			assert(0 == val >> t_bits);
-			dst[i].fetch_or(val);
-		}
-	}
-	
-	
-	template <std::uint8_t t_bits, typename t_word>
-	void transpose_column_to_row(
-		detail::matrix_slice <compressed_atomic_matrix <t_bits>> &dst,
-		detail::matrix_slice <compressed_atomic_matrix <t_bits>> const &src
-	)
-	{
-		word_type mask(1);
-		mask <<= t_bits;
-		--mask;
-		
-		auto const length(dst.size());
-		assert(src.size() * (WORD_BITS / t_bits) <= length);
-		auto src_it(src.cbegin());
-		word_type val(0);
-		for (std::size_t i(0); i < length; ++i)
-		{
-			if (0 == i % (WORD_BITS / t_bits))
-				val = *src_it++;
-			
-			dst[i].fetch_or(val & mask);
-			val >>= t_bits;
-		}
-	}
-	
-	
-	template <typename t_slice>
-	void fill_column_with_2_bit_pattern(t_slice &column, word_type pattern)
-	{
-		// Fill one word at a time.
-		pattern |= pattern << 2;
-		pattern |= pattern << 4;
-		if (8 == WORD_BITS)
-			goto do_fill;
-		pattern |= pattern << 8;
-		if (16 == WORD_BITS)
-			goto do_fill;
-		pattern |= pattern << 16;
-		if (32 == WORD_BITS)
-			goto do_fill;
-		pattern |= pattern << 32;
-		
-	do_fill:
-		std::fill(column.begin(), column.end(), pattern);
-	}
-	
-	
 	template <typename t_value>
 	void matrix <t_value>::resize_if_needed(std::size_t const rows, std::size_t const columns)
 	{
-		if (row_size() < rows || column_size() < columns)
+		if (number_of_rows() < rows || number_of_columns() < columns)
 		{
 			if (size() < rows * columns)
 				resize(rows * columns);
@@ -488,7 +204,7 @@ namespace text_align {
 	void matrix <t_value>::swap(matrix <t_value> &rhs)
 	{
 		using std::swap;
-		swap(m_values, rhs.m_values);
+		swap(m_data, rhs.m_data);
 		swap(m_stride, rhs.m_stride);
 #ifndef NDEBUG
 		swap(m_columns, rhs.m_columns);
@@ -500,68 +216,9 @@ namespace text_align {
 	template <typename t_fn>
 	void matrix <t_value>::apply(t_fn &&value_type)
 	{
-		for (auto &val : m_values)
+		for (auto &val : m_data)
 			val = t_fn(val);
 	}
-	
-	
-	template <std::uint8_t t_bits, typename t_word>
-	auto compressed_atomic_matrix <t_bits>::fetch(std::size_t const row, std::size_t const col) const -> word_type
-	{
-		auto const shift_amt(row % SUBELEMENT_COUNT * t_bits);
-		auto const y(row / SUBELEMENT_COUNT);
-		word_type val(superclass::operator()(y, col)); // Atomic.
-		val >>= shift_amt;
-		val &= SUBELEMENT_MASK;
-		return val;
-	}
-	
-	
-	template <std::uint8_t t_bits, typename t_word>
-	auto compressed_atomic_matrix <t_bits>::fetch_or(std::size_t const row, std::size_t const col, word_type val) -> word_type
-	{
-		assert(val <= SUBELEMENT_MASK);
-		auto const shift_amt(row % SUBELEMENT_COUNT * t_bits);
-		auto const y(row / SUBELEMENT_COUNT);
-		val <<= shift_amt;
-		auto const res(superclass::operator()(y, col).fetch_or(val)); // Atomic.
-		return ((res >> shift_amt) & SUBELEMENT_MASK);
-	}
 }
-
-
-namespace text_align { namespace detail {
-	
-	template <typename t_matrix>
-	typename t_matrix::slice_type row(t_matrix &matrix, std::size_t const row, std::size_t const first, std::size_t const limit)
-	{
-		std::slice const slice(matrix.idx(row, first), limit - first, matrix.stride());
-		return typename t_matrix::slice_type(matrix, slice);
-	}
-	
-	
-	template <typename t_matrix>
-	typename t_matrix::slice_type column(t_matrix &matrix, std::size_t const column, std::size_t const first, std::size_t const limit)
-	{
-		std::slice const slice(matrix.idx(first, column), limit - first, 1);
-		return typename t_matrix::slice_type(matrix, slice);
-	}
-	
-	
-	template <typename t_matrix>
-	typename t_matrix::const_slice_type const_row(t_matrix const &matrix, std::size_t const row, std::size_t const first, std::size_t const limit)
-	{
-		std::slice const slice(matrix.idx(row, first), limit - first, matrix.stride());
-		return typename t_matrix::const_slice_type(matrix, slice);
-	}
-	
-	
-	template <typename t_matrix>
-	typename t_matrix::const_slice_type const_column(t_matrix const &matrix, std::size_t const column, std::size_t const first, std::size_t const limit)
-	{
-		std::slice const slice(matrix.idx(first, column), limit - first, 1);
-		return typename t_matrix::const_slice_type(matrix, slice);
-	}
-}}
 
 #endif
