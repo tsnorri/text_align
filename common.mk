@@ -12,7 +12,7 @@ GENGETOPT		?= gengetopt
 PYTHON			?= python
 PG_CONFIG		?= pg_config
 
-INCLUDE_DIRS	+= ../include
+INCLUDE_DIRS	+= ../include ../lib/range-v3/include
 LIBRARIES		+= boost_system-mt
 
 EXTRA_CXXFLAGS	+= -std=c++17
