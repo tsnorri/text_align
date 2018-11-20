@@ -12,6 +12,12 @@
 #define always_assert(X) do { if (!(X)) ::text_align::detail::assertion_failure(__FILE__, __LINE__, #X); } while (false)
 #define fail_assertion() do { ::text_align::detail::fail(__FILE__, __LINE__); } while (false)
 
+#ifndef NDEBUG
+#	define do_and_assert_eq(X, Y) do { if ((X) != (Y)) ::text_align::detail::assertion_failure(__FILE__, __LINE__, #X); } while (false)
+#else
+#	define do_and_assert_eq(X, Y) do { (X); } while (false)
+#endif
+
 
 namespace text_align { namespace detail {
 	
