@@ -6,7 +6,7 @@
 #ifndef TEXT_ALIGN_SMITH_WATERMAN_ALIGNER_SAMPLE_HH
 #define TEXT_ALIGN_SMITH_WATERMAN_ALIGNER_SAMPLE_HH
 
-#include <text_align/matrix.hh>
+#include <text_align/packed_matrix.hh>
 #include <text_align/smith_waterman/aligner_base.hh>
 #include <vector>
 

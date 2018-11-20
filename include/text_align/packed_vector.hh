@@ -7,6 +7,7 @@
 #define TEXT_ALIGN_PACKED_VECTOR_HH
 
 #include <atomic>
+#include <experimental/iterator>
 #include <vector>
 
 
@@ -39,15 +40,30 @@ namespace text_align { namespace detail {
 	};
 	
 	
-	template <typename t_vector, typename t_reference>
+	template <typename t_vector, bool t_is_const = std::is_const_v <t_vector>>
+	struct packed_vector_iterator_traits
+	{
+		typedef typename t_vector::reference			reference;
+		typedef typename t_vector::word_iterator		word_iterator;
+	};
+	
+	template <typename t_vector>
+	struct packed_vector_iterator_traits <t_vector, true>
+	{
+		typedef typename t_vector::const_reference		reference;
+		typedef typename t_vector::const_word_iterator	word_iterator;
+	};
+	
+	
+	template <typename t_vector>
 	class packed_vector_iterator_base
 	{
 	public:
-		typedef typename t_vector::word_iterator		word_iterator;
-		typedef typename t_vector::const_word_iterator	const_word_iterator;
-		typedef typename t_vector::reference_proxy		reference_proxy;
+		typedef packed_vector_iterator_traits <t_vector>	traits;
+		typedef typename traits::word_iterator				word_iterator;
+		typedef typename t_vector::reference_proxy			reference_proxy;	// FIXME: needed?
 		
-		enum { SUBELEMENT_COUNT = t_vector::SUBELEMENT_COUNT };
+		enum { ELEMENT_COUNT = t_vector::ELEMENT_COUNT };
 
 	protected:
 		t_vector		*m_vector{};
@@ -65,9 +81,8 @@ namespace text_align { namespace detail {
 		
 		template <
 			typename t_other_vector,
-			typename t_other_reference,
-			std::enable_if <std::is_convertible_v <t_other_vector *, t_vector *>>
-		> packed_vector_iterator_base(packed_vector_iterator_base <t_other_vector, t_other_reference> const &other):
+			typename std::enable_if_t <std::is_convertible_v <t_other_vector *, t_vector *>>
+		> packed_vector_iterator_base(packed_vector_iterator_base <t_other_vector> const &other):
 			m_vector(other.m_vector),
 			m_idx(other.m_idx)
 		{
@@ -76,47 +91,61 @@ namespace text_align { namespace detail {
 		std::size_t index() const { return m_idx; }
 		
 		virtual void advance(std::ptrdiff_t) = 0;
-		virtual bool equal(packed_vector_iterator_base const &other) const { return m_vector == other.m_vector && m_idx == other.m_idx; }
+		bool equal(packed_vector_iterator_base const &other) const { return m_vector == other.m_vector && m_idx == other.m_idx; }
 		
 		void increment() { advance(1); }
 		void decrement() { advance(-1); }
-		t_reference dereference() const { return m_vector->operator()(m_idx); }
+		typename traits::reference dereference() const { return m_vector->operator()(m_idx); }
 		
 		reference_proxy to_reference_proxy() const { return reference_proxy(*m_vector, m_idx); }
-		word_iterator to_word_iterator() const { assert(0 == m_idx % SUBELEMENT_COUNT); return m_vector->begin() + m_idx / SUBELEMENT_COUNT; }
-		const_word_iterator to_const_word_iterator() const { assert(0 == m_idx % SUBELEMENT_COUNT); return m_vector->begin() + m_idx / SUBELEMENT_COUNT; }
+		word_iterator to_word_iterator() const
+		{
+			if (0 != m_idx % ELEMENT_COUNT)
+				throw std::runtime_error("Unable to convert to word_iterator");
+			return m_vector->word_begin() + m_idx / ELEMENT_COUNT;
+		}
 		
 		operator reference_proxy() const { return to_reference_proxy(); }
-		operator word_iterator() const { return to_word_iterator(); }
-		operator const_word_iterator() const { return to_const_word_iterator(); }
+
+		std::ptrdiff_t distance_to(packed_vector_iterator_base const &other) const
+		{
+			assert(this->m_idx <= std::numeric_limits <std::ptrdiff_t>::max());
+			assert(other.m_idx <= std::numeric_limits <std::ptrdiff_t>::max());
+			auto const retval(other.m_idx - this->m_idx);
+			assert(std::numeric_limits <std::ptrdiff_t>::min() <= retval);
+			return retval;
+		}
 	};
 	
 	
-	template <typename t_vector, typename t_reference>
+	template <typename t_vector>
 	class packed_vector_iterator final :
-		public packed_vector_iterator_base <t_vector, t_reference>,
+		public packed_vector_iterator_base <t_vector>,
 		public boost::iterator_facade <
-			packed_vector_iterator <t_vector, t_reference>,
-			t_reference,
+			packed_vector_iterator <t_vector>,
+			typename packed_vector_iterator_traits <t_vector>::reference,
 			boost::random_access_traversal_tag,
-			t_reference
+			typename packed_vector_iterator_traits <t_vector>::reference
 		>
 	{
 		friend class boost::iterator_core_access;
 		
+	protected:
+		typedef packed_vector_iterator_base <t_vector>	iterator_base;
+		
 	public:
-		using packed_vector_iterator_base <t_vector, t_reference>::packed_vector_iterator_base;
+		using iterator_base::packed_vector_iterator_base;
 		
 	private:
 		virtual void advance(std::ptrdiff_t const diff) override { this->m_idx += diff; }
-		std::ptrdiff_t distance_to(packed_vector_iterator const &other) const { assert(this->m_idx <= other.m_idx); return other.m_idx - this->m_idx; }
+		std::ptrdiff_t distance_to(packed_vector_iterator const &other) const { return iterator_base::distance_to(other); }
 	};
 }}
 
 
 namespace text_align {
 	
-	template <std::uint8_t t_bits, typename t_word = std::uint64_t>
+	template <unsigned int t_bits, typename t_word = std::uint64_t>
 	class packed_vector
 	{
 		static_assert(std::is_unsigned_v <t_word>);
@@ -129,28 +158,23 @@ namespace text_align {
 		static_assert(0 == t_bits || 0 == WORD_BITS % t_bits);
 		
 	protected:
-		typedef std::vector <std::atomic <word_type>>	value_vector;
+		typedef std::vector <std::atomic <word_type>>					value_vector;
 		
 	public:
-		typedef typename value_vector::reference		word_reference;
-		typedef typename value_vector::iterator			word_iterator;
-		typedef typename value_vector::const_iterator	const_word_iterator;
+		typedef typename value_vector::reference						word_reference;
+		typedef typename value_vector::iterator							word_iterator;
+		typedef typename value_vector::const_iterator					const_word_iterator;
 		
-		typedef detail::packed_vector_value_reference <
-			packed_vector
-		>												reference_proxy;
-		typedef detail::packed_vector_iterator <
-			packed_vector,
-			reference_proxy
-		>												iterator;
-		typedef detail::packed_vector_iterator <
-			packed_vector,
-			word_type
-		>												const_iterator;
+		typedef detail::packed_vector_value_reference <packed_vector>	reference_proxy;
+		typedef reference_proxy											reference;
+		typedef word_type												const_reference;
+		
+		typedef detail::packed_vector_iterator <packed_vector>			iterator;
+		typedef detail::packed_vector_iterator <packed_vector const>	const_iterator;
 		
 		enum {
-			SUBELEMENT_COUNT	= WORD_BITS / t_bits,
-			SUBELEMENT_MASK		= (std::numeric_limits <word_type>::max() >> (WORD_BITS - t_bits))
+			ELEMENT_COUNT	= WORD_BITS / t_bits,
+			ELEMENT_MASK		= (std::numeric_limits <word_type>::max() >> (WORD_BITS - t_bits))
 		};
 	
 	protected:
@@ -160,11 +184,12 @@ namespace text_align {
 	public:
 		packed_vector() = default;
 		explicit packed_vector(std::size_t const size):
-			m_values(std::ceil(1.0 * size / SUBELEMENT_COUNT)),
+			m_values(std::ceil(1.0 * size / ELEMENT_COUNT)),
 			m_size(size)
 		{
 		}
 		
+		// Primitives.
 		word_type load(std::size_t const idx, std::memory_order = std::memory_order_seq_cst) const;
 		word_type fetch_or(std::size_t const idx, word_type val, std::memory_order const = std::memory_order_seq_cst);
 		
@@ -174,9 +199,14 @@ namespace text_align {
 		word_reference word_at(std::size_t const idx) { return m_values[idx]; }
 		
 		std::size_t size() const { return m_size; }											// Size in elements.
-		std::size_t available_size() const { return m_values.size() * SUBELEMENT_COUNT; }
+		std::size_t available_size() const { return m_values.size() * ELEMENT_COUNT; }
 		std::size_t word_size() const { return m_values.size(); }
 		void set_size(std::size_t new_size) { assert(new_size <= available_size()); m_size = new_size; }
+		
+		constexpr std::size_t word_bits() const { return WORD_BITS; }
+		constexpr std::size_t element_bits() const { return t_bits; }
+		constexpr std::size_t element_count_in_word() const { return ELEMENT_COUNT; }
+		constexpr word_type element_mask() const { return ELEMENT_MASK; }
 		
 		// Iterators to packed values.
 		iterator begin() { return iterator(*this, 0); }
@@ -196,21 +226,29 @@ namespace text_align {
 	};
 	
 	
-	template <std::uint8_t t_bits, typename t_word>
+	template <unsigned int t_bits, typename t_word>
+	std::ostream &operator<<(std::ostream &os, packed_vector <t_bits, t_word> const &vec)
+	{
+		std::copy(vec.begin(), vec.end(), std::experimental::make_ostream_joiner(os, "\t"));
+		return os;
+	}
+
+	
+	template <unsigned int t_bits, typename t_word>
 	auto packed_vector <t_bits, t_word>::load(
 		std::size_t const idx,
 		std::memory_order const order
 	) const -> word_type
 	{
 		assert(idx < m_size);
-		auto const word_idx(idx / SUBELEMENT_COUNT);
-		auto const el_idx(idx % SUBELEMENT_COUNT);
+		auto const word_idx(idx / ELEMENT_COUNT);
+		auto const el_idx(idx % ELEMENT_COUNT);
 		word_type const retval(m_values[word_idx].load(order));
-		return ((retval >> (el_idx * t_bits)) & SUBELEMENT_MASK);
+		return ((retval >> (el_idx * t_bits)) & ELEMENT_MASK);
 	}
 	
 	
-	template <std::uint8_t t_bits, typename t_word>
+	template <unsigned int t_bits, typename t_word>
 	auto packed_vector <t_bits, t_word>::fetch_or(
 		std::size_t const idx,
 		word_type val,
@@ -218,15 +256,17 @@ namespace text_align {
 	) -> word_type
 	{
 		assert(idx < m_size);
-		auto const word_idx(idx / SUBELEMENT_COUNT);
-		auto const el_idx(idx % SUBELEMENT_COUNT);
+		assert(val == (val & ELEMENT_MASK));
+
+		auto const word_idx(idx / ELEMENT_COUNT);
+		auto const el_idx(idx % ELEMENT_COUNT);
 		auto const shift_amt(t_bits * el_idx);
-		
-		val &= SUBELEMENT_MASK;
+	
+		val &= ELEMENT_MASK;
 		val <<= shift_amt;
 		
 		word_type const retval(m_values[word_idx].fetch_or(val, order));
-		return ((retval >> shift_amt) & SUBELEMENT_MASK);
+		return ((retval >> shift_amt) & ELEMENT_MASK);
 	}
 }
 

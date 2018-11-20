@@ -79,7 +79,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				return false;
 			
 			--i;
-			gsgt = static_cast <gap_score_gt_type>(m_data->gap_score_gt.value_at(j, i));
+			gsgt = static_cast <gap_score_gt_type>(m_data->gap_score_gt.load(j, i));
 			if (0 != (gap_score_gt_type::GSGT_LEFT & gsgt))
 				return true;
 		}
@@ -101,7 +101,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				return false;
 			
 			--j;
-			gsgt = static_cast <gap_score_gt_type>(m_data->gap_score_gt.value_at(j, i));
+			gsgt = static_cast <gap_score_gt_type>(m_data->gap_score_gt.load(j, i));
 			if (0 != (gap_score_gt_type::GSGT_UP & gsgt))
 				return true;
 		}

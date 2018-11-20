@@ -11,6 +11,40 @@
 #include <text_align/packed_matrix_fwd.hh>
 
 
+namespace text_align { namespace matrices { namespace detail {
+	
+	template <unsigned int t_length_diff>
+	struct fill_bit_pattern_helper
+	{
+		template <unsigned int t_pattern_length, typename t_word>
+		static constexpr t_word fill_bit_pattern(t_word pattern)
+		{
+			pattern |= pattern << t_pattern_length;
+			
+			typedef fill_bit_pattern_helper <CHAR_BIT * sizeof(t_word) - 2 * t_pattern_length> helper;
+			return helper::template fill_bit_pattern <2 * t_pattern_length>(pattern);
+		}
+	};
+	
+	template <>
+	struct fill_bit_pattern_helper <0>
+	{
+		template <unsigned int t_pattern_length, typename t_word>
+		static constexpr t_word fill_bit_pattern(t_word pattern)
+		{
+			return pattern;
+		}
+	};
+	
+	template <unsigned int t_pattern_length, typename t_word>
+	constexpr t_word fill_bit_pattern(t_word pattern)
+	{
+		typedef fill_bit_pattern_helper <CHAR_BIT * sizeof(t_word) - t_pattern_length> helper;
+		return helper::template fill_bit_pattern <t_pattern_length>(pattern);
+	}
+}}}
+
+
 namespace text_align { namespace matrices {
 	
 #if 0
@@ -76,76 +110,56 @@ namespace text_align { namespace matrices {
 	}
 	
 	
-	template <std::uint8_t t_src_bits, typename t_src_word, std::uint8_t t_dst_bits, typename t_dst_word>
+	template <typename t_src_matrix, typename t_dst_matrix>
 	void transpose_column_to_row(
-		detail::matrix_slice <packed_matrix <t_src_bits, t_src_word>> const &src,
-		detail::matrix_slice <packed_matrix <t_dst_bits, t_dst_word>> &&dst
+		::text_align::detail::packed_matrix_slice <t_src_matrix> const &src,
+		::text_align::detail::packed_matrix_slice <t_dst_matrix> &dst
+	)
+	{
+		assert(src.size() <= dst.size()); // FIXME: throw an exception?
+		auto dst_it(dst.begin());
+		
+		auto const &src_range(src.to_word_range());
+		src_range.apply_aligned(
+			[
+#ifndef NDEBUG
+			 	&dst,
+#endif
+				&dst_it
+			](typename t_src_matrix::word_type word){ // FIXME: memory_order_acquire?
+				for (std::size_t i(0); i < t_src_matrix::ELEMENT_COUNT; ++i)
+				{
+					assert(dst_it != dst.end());
+					dst_it->fetch_or(word & t_src_matrix::ELEMENT_MASK); // FIXME: memory_order_release?
+					word >>= t_src_matrix::ELEMENT_BITS;
+					++dst_it;
+				}
+			}
+		);
+	}
+	
+	
+	template <typename t_src_matrix, typename t_dst_matrix>
+	void transpose_column_to_row(
+		::text_align::detail::packed_matrix_slice <t_src_matrix> const &src,
+		::text_align::detail::packed_matrix_slice <t_dst_matrix> &&dst	// May be proxy, thus moving is allowed.
 	)
 	{
 		transpose_column_to_row(src, dst);
 	}
+
 	
-	
-	template <std::uint8_t t_src_bits, typename t_src_word, std::uint8_t t_dst_bits, typename t_dst_word>
-	void transpose_column_to_row(
-		detail::matrix_slice <packed_matrix <t_dst_bits, t_dst_word>> const &src,
-		detail::matrix_slice <packed_matrix <t_src_bits, t_src_word>> &dst
+	template <unsigned int t_pattern_length, typename t_matrix>
+	void fill_column_with_bit_pattern(
+		typename t_matrix::slice_type &column,
+		typename t_matrix::word_type pattern
 	)
 	{
-		typedef typename decltype(src)::matrix_type src_matrix_type;
-		
-		static_assert(t_src_bits <= t_dst_bits);
-		t_src_word const mask(src_matrix_type::SUBELEMENT_MASK);
-		
-		auto const length(std::min(src.size(), dst.size()));
-		auto src_it(src.cbegin());
-		t_src_word val(0);
-		for (std::size_t i(0); i < length; ++i)
-		{
-			if (0 == i % (src_matrix_type::WORD_BITS / t_src_bits))
-				val = *src_it++;
-			
-			dst[i].fetch_or(val & mask);
-			val >>= t_src_bits;
-		}
-	}
-	
-	
-	template <std::uint8_t t_bits, typename t_slice>
-	void fill_column_with_bit_pattern(t_slice &column, typename t_slice::matrix_type::word_type pattern)
-	{
-		// Fill one word at a time.
-		static_assert(2 == t_bits || 4 == t_bits || 8 == t_bits || 16 == t_bits || 32 == t_bits || 64 == t_bits);
-		switch (t_bits)
-		{
-			case 2:
-				pattern |= pattern << 2;
-				
-			case 4:
-				pattern |= pattern << 4;
-				
-			case 8:
-				if (8 == t_slice::WORD_BITS)
-					goto do_fill;
-				pattern |= pattern << 8;
-			
-			case 16:
-				if (16 == t_slice::WORD_BITS)
-					goto do_fill;
-				pattern |= pattern << 16;
-				
-			case 32:
-				if (32 == t_slice::WORD_BITS)
-					goto do_fill;
-				pattern |= pattern << 32;
-				break;
-		}
-		
-	do_fill:
-		auto word_range(column.word_range());
-		boost::range::fill(word_range.mid, pattern);
-		boost::range::for_each(word_range.left_extent,	[pattern](auto &ref){ ref.fetch_or(pattern); });
-		boost::range::for_each(word_range.right_extent,	[pattern](auto &ref){ ref.fetch_or(pattern); });
+		pattern = detail::fill_bit_pattern <t_pattern_length>(pattern);
+		auto word_range(column.to_word_range());
+		word_range.apply_left([pattern](auto &atomic, std::size_t const bits){ do_and_assert_eq(atomic.fetch_or(pattern << bits), 0); });
+		word_range.apply_mid([pattern](auto &atomic){ do_and_assert_eq(atomic.fetch_or(pattern), 0); });
+		word_range.apply_right([pattern](auto &atomic, std::size_t const bits){ do_and_assert_eq(atomic.fetch_or(pattern >> (t_matrix::WORD_BITS - bits)), 0); });
 	}
 }}
 

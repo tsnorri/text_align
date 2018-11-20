@@ -209,8 +209,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				{
 					auto const y(1 + j - lhs_idx);
 					auto const x(1 + i - rhs_idx);
-					this->m_data->traceback(y, x)		= result.max_idx;
-					this->m_data->gap_score_gt(y, x)	= result.is_gap_score_gt;
+					do_and_assert_eq(this->m_data->traceback(y, x).fetch_or(result.max_idx), 0);
+					do_and_assert_eq(this->m_data->gap_score_gt(y, x).fetch_or(result.is_gap_score_gt), 0);
 				}
 				
 				++lhs_it_2;
@@ -224,10 +224,10 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				auto const prev_diag_score((*src_buffer_ptr)[lhs_limit]);
 				calculate_score(prev_diag_score, lhs_c, rhs_c, lhs_limit, i, result);
 				
-				this->m_rhs->score_samples(1 + i, 1 + lhs_block_idx)		= result.score;				// Horizontal
-				this->m_rhs->gap_score_samples(1 + i, 1 + lhs_block_idx)	= this->m_gap_score_rhs;	// Horizontal
-				this->m_rhs->gap_score_gt(1 + i, 1 + lhs_block_idx)			= result.is_gap_score_gt;	// Horizontal
-				this->m_rhs->initial_traceback(1 + i, 1 + lhs_block_idx)	= result.max_idx;			// Horizontal, values same as arrow_type::*
+				this->m_rhs->score_samples(1 + i, 1 + lhs_block_idx)		= result.score;									// Horizontal
+				this->m_rhs->gap_score_samples(1 + i, 1 + lhs_block_idx)	= this->m_gap_score_rhs;						// Horizontal
+				do_and_assert_eq(this->m_rhs->gap_score_gt(1 + i, 1 + lhs_block_idx).fetch_or(result.is_gap_score_gt), 0);	// Horizontal
+				do_and_assert_eq(this->m_rhs->initial_traceback(1 + i, 1 + lhs_block_idx).fetch_or(result.max_idx), 0);		// Horizontal, values same as arrow_type::*
 			}
 			
 			// Copy to score_buffer if needed.
@@ -262,10 +262,10 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				auto const prev_diag_score((*src_buffer_ptr)[j]);
 				calculate_score(prev_diag_score, lhs_c, rhs_c, j, rhs_limit, result);
 				
-				this->m_lhs->score_samples(1 + j, 1 + rhs_block_idx)		= result.score;							// Horizontal
-				this->m_lhs->gap_score_samples(1 + j, 1 + rhs_block_idx)	= this->m_data->gap_scores_lhs[1 + j];	// Horizontal
-				this->m_lhs->gap_score_gt(1 + j, 1 + rhs_block_idx)			= result.is_gap_score_gt;
-				this->m_lhs->initial_traceback(1 + j, 1 + rhs_block_idx)	= result.max_idx;						// Same as arrow_type::*
+				this->m_lhs->score_samples(1 + j, 1 + rhs_block_idx)		= result.score;									// Horizontal
+				this->m_lhs->gap_score_samples(1 + j, 1 + rhs_block_idx)	= this->m_data->gap_scores_lhs[1 + j];			// Horizontal
+				do_and_assert_eq(this->m_lhs->gap_score_gt(1 + j, 1 + rhs_block_idx).fetch_or(result.is_gap_score_gt), 0);
+				do_and_assert_eq(this->m_lhs->initial_traceback(1 + j, 1 + rhs_block_idx).fetch_or(result.max_idx), 0);		// Same as arrow_type::*
 			}
 		}
 		
@@ -311,15 +311,15 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		
 		if (print_debugging_information)
 		{
-			score_buffer.resize(traceback.row_size() * 32, traceback.column_size() * 32);
+			score_buffer.resize(traceback.number_of_rows(), traceback.number_of_columns());
 			score_buffer_ptr = &score_buffer;
 		}
 		
 		while (true)
 		{
 			// Initialize the block to calculate the traceback.
-			std::fill(traceback.begin(), traceback.end(), 0);
-			std::fill(this->m_data->gap_score_gt.begin(), this->m_data->gap_score_gt.end(), 0);
+			std::fill(traceback.word_begin(), traceback.word_end(), 0);
+			std::fill(this->m_data->gap_score_gt.word_begin(), this->m_data->gap_score_gt.word_end(), 0);
 			
 			// Initialize the score buffer if needed.
 			std::fill(score_buffer.begin(), score_buffer.end(), 0);
@@ -333,20 +333,30 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				
 				{
 					auto dst(traceback.column(0));
-					auto src(this->m_lhs->initial_traceback.column(rhs_block_idx, first_lhs / 32, limit_lhs / 32));
+					auto const &src(this->m_lhs->initial_traceback.column(rhs_block_idx, first_lhs, limit_lhs));
 					assert(src.size() == dst.size());
-					std::transform(src.begin(), src.end(), dst.begin(), [](auto &atomic){ return atomic.load(); });
+					always_assert(dst.is_word_aligned());
+					auto dst_it(dst.word_begin());
+					src.to_word_range().apply_aligned([&dst_it](auto word){
+						dst_it->store(word);
+						++dst_it;
+					});
 				}
 				
 				{
 					auto dst(this->m_data->gap_score_gt.column(0));
-					auto src(this->m_lhs->gap_score_gt.column(rhs_block_idx, first_lhs / 32, limit_lhs / 32));
+					auto src(this->m_lhs->gap_score_gt.column(rhs_block_idx, first_lhs, limit_lhs));
 					assert(src.size() == dst.size());
-					std::transform(src.begin(), src.end(), dst.begin(), [](auto &atomic){ return atomic.load(); });
+					always_assert(dst.is_word_aligned());
+					auto dst_it(dst.word_begin());
+					src.to_word_range().apply_aligned([&dst_it](auto word){
+						dst_it->store(word);
+						++dst_it;
+					});
 				}
 				
-				transpose_column_to_row(traceback.row(0), this->m_rhs->initial_traceback.column(lhs_block_idx, first_rhs / 32, limit_rhs / 32));
-				transpose_column_to_row(this->m_data->gap_score_gt.row(0), this->m_rhs->gap_score_gt.column(lhs_block_idx, first_rhs / 32, limit_rhs / 32));
+				matrices::transpose_column_to_row(this->m_rhs->initial_traceback.column(lhs_block_idx, first_rhs, limit_rhs), traceback.row(0));
+				matrices::transpose_column_to_row(this->m_rhs->gap_score_gt.column(lhs_block_idx, first_rhs, limit_rhs), this->m_data->gap_score_gt.row(0));
 			}
 			
 			// The first row and column are now filled, run the filling algorithm.
@@ -559,8 +569,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		{
 			if (1 + lhs_block_idx < lhs_segments)
 			{
-				auto const prev_val((this->m_data->flags)(1 + lhs_block_idx, rhs_block_idx)++);
-				if (1 == prev_val)
+				auto const prev_val((this->m_data->flags)(1 + lhs_block_idx, rhs_block_idx).fetch_or(0x1));
+				if (0x1 == prev_val)
 				{
 					boost::asio::post(*this->m_ctx, [this, lhs_block_idx, rhs_block_idx](){
 						align_block(1 + lhs_block_idx, rhs_block_idx);
@@ -570,8 +580,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			
 			if (1 + rhs_block_idx < rhs_segments)
 			{
-				auto const prev_val((this->m_data->flags)(lhs_block_idx, 1 + rhs_block_idx)++);
-				if (1 == prev_val)
+				auto const prev_val((this->m_data->flags)(lhs_block_idx, 1 + rhs_block_idx).fetch_or(0x1));
+				if (0x1 == prev_val)
 				{
 					boost::asio::post(*this->m_ctx, [this, lhs_block_idx, rhs_block_idx](){
 						align_block(lhs_block_idx, 1 + rhs_block_idx);

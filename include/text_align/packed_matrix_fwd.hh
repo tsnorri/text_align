@@ -11,7 +11,7 @@
 
 namespace text_align {
 	
-	template <std::uint8_t t_bits, typename t_word = std::uint64_t>
+	template <unsigned int t_bits, typename t_word = std::uint64_t>
 	class packed_matrix;
 }
 

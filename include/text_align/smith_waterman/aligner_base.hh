@@ -16,9 +16,11 @@ namespace text_align { namespace smith_waterman {
 	struct aligner_base
 	{
 	public:
-		typedef compressed_atomic_matrix <2>			traceback_matrix;
-		typedef compressed_atomic_matrix <2>			direction_matrix;
-		typedef compressed_atomic_matrix <2>			gap_score_gt_matrix;
+		typedef std::uint8_t							word_type;
+		typedef packed_matrix <2, word_type>			traceback_matrix;
+		typedef packed_matrix <2, word_type>			direction_matrix;
+		typedef packed_matrix <2, word_type>			gap_score_gt_matrix;
+		typedef packed_matrix <1, word_type>			flag_matrix;
 		typedef boost::dynamic_bitset <std::uint64_t>	bit_vector;
 		
 		enum arrow_type : std::uint8_t

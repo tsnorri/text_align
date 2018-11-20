@@ -40,15 +40,16 @@ namespace text_align { namespace detail {
 	public:
 		matrix_iterator() = default;
 		
-		matrix_iterator(t_iterator it, std::size_t stride):
-			m_it(it),
+		template <typename t_matrix>
+		matrix_iterator(t_matrix &matrix, std::size_t start, std::size_t stride):
+			m_it(matrix.begin() + start),
 			m_stride(stride)
 		{
 		}
 		
 		template <
 			typename t_other_iterator,
-			std::enable_if_t <std::is_convertible_v <t_other_iterator *, t_iterator *>>
+			typename = std::enable_if_t <std::is_convertible_v <t_other_iterator *, t_iterator *>>
 		> matrix_iterator(matrix_iterator <t_other_iterator> const &other):
 			m_it(other.m_it),
 			m_stride(other.m_stride)
@@ -65,6 +66,7 @@ namespace text_align { namespace detail {
 		std::ptrdiff_t distance_to(matrix_iterator const &other) const
 		{
 			auto const dist(std::distance(m_it, other.m_it));
+			assert(0 == dist % m_stride);
 			auto const retval(dist / m_stride);
 			return retval;
 		}
