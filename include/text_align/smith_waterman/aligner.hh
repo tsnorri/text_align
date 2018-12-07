@@ -35,6 +35,7 @@ namespace text_align { namespace smith_waterman {
 			SCORE_MIN		= std::numeric_limits <t_score>::min()
 		};
 		
+		typedef aligner_base::word_type					word_type;
 		typedef t_score									score_type;
 		typedef std::vector <score_type>				score_vector;
 		typedef matrix <score_type>						score_matrix;
@@ -145,8 +146,8 @@ namespace text_align { namespace smith_waterman {
 		}
 		
 		// Count the segments.
-		auto const segments_along_y(std::ceil(1.0 * m_parameters.lhs_length / m_parameters.segment_length)); // Segment count along Y axis.
-		auto const segments_along_x(std::ceil(1.0 * m_parameters.rhs_length / m_parameters.segment_length)); // Segment count along X axis.
+		auto const segments_along_y(std::ceil(1.0 * (1 + m_parameters.lhs_length) / m_parameters.segment_length)); // Segment count along Y axis.
+		auto const segments_along_x(std::ceil(1.0 * (1 + m_parameters.rhs_length) / m_parameters.segment_length)); // Segment count along X axis.
 		
 		// Initialize the flags.
 		{

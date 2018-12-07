@@ -31,8 +31,6 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		aligner_sample <t_owner>		*m_lhs{};
 		aligner_sample <t_owner>		*m_rhs{};
 		
-		score_type						m_gap_score_rhs{};
-		
 		std::atomic <score_type>		m_block_score{};
 		
 	public:

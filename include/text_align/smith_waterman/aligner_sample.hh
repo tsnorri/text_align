@@ -60,7 +60,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		score_vector		gap_scores_lhs;			// Buffer for lhs gap scores.
 		
 		traceback_matrix	traceback;
-		gap_score_gt_matrix	gap_score_gt;
+		gap_score_gt_matrix	gap_score_gt;			// For finding the gap start in case gap was considered for the position.
 	};
 }}}
 
