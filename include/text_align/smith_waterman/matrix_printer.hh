@@ -27,6 +27,9 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		bit_vector	m_rhs_gaps{};
 		t_lhs_it	m_lhs_it{};
 		t_rhs_it	m_rhs_it{};
+		std::size_t	m_padding{};
+		std::size_t	m_lhs_offset{};
+		std::size_t	m_rhs_offset{};
 		std::size_t	m_rows{};
 		std::size_t	m_columns{};
 		std::size_t	m_path_x{};
@@ -55,6 +58,10 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			reverse_bitset(m_rhs_gaps);
 		}
 		
+		void set_lhs_offset(std::size_t off) { m_lhs_offset = off; }
+		void set_rhs_offset(std::size_t off) { m_rhs_offset = off; }
+		void set_padding(std::size_t padding) { m_padding = padding; }
+
 		void print_header();
 		void print_traceback(traceback_matrix const &tb);
 		
@@ -69,10 +76,11 @@ namespace text_align { namespace smith_waterman { namespace detail {
 	template <typename t_lhs_it, typename t_rhs_it>
 	void matrix_printer <t_lhs_it, t_rhs_it>::print_header()
 	{
-		std::cerr << "\t\t";
 		auto rhs_it(m_rhs_it); // Copy.
+		std::advance(rhs_it, m_rhs_offset);
 		std::ostream_iterator <char> out_it(std::cerr);
-		for (std::size_t i(1); i < m_columns; ++i)
+		std::fill_n(out_it, 1 + m_padding, '\t');
+		for (std::size_t i(m_padding); i < m_columns; ++i)
 		{
 			auto const rhs_c(*rhs_it++);
 			std::cerr << '\t';
@@ -140,17 +148,21 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		
 		print_header();
 		auto lhs_it(m_lhs_it); // Copy.
-		
+		std::advance(lhs_it, m_lhs_offset);
+
 		buffer_type buffer;
 		buffer_stream os(buffer);
 		std::ostream_iterator <char> out_it(std::cerr);
 		
 		for (std::size_t j(0); j < m_rows; ++j)
 		{
-			if (j)
-				boost::locale::utf::utf_traits <char, 1>::encode(*lhs_it++, out_it);
-			else
+			if (j < m_padding)
 				std::cerr << " \t" << j;
+			else
+			{
+				boost::locale::utf::utf_traits <char, 1>::encode(*lhs_it++, out_it);
+				std::cerr << '\t' << j;
+			}
 
 			for (std::size_t i(0); i < m_columns; ++i)
 			{
@@ -206,14 +218,18 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		
 		print_header();
 		auto lhs_it(m_lhs_it); // Copy.
+		std::advance(lhs_it, m_lhs_offset);
 		std::ostream_iterator <char> out_it(std::cerr);
 		for (std::size_t j(0); j < m_rows; ++j)
 		{
-			if (j)
-				boost::locale::utf::utf_traits <char, 1>::encode(*lhs_it++, out_it);
-			else
+			if (j < m_padding)
 				std::cerr << " \t" << j;
-			
+			else
+			{
+				boost::locale::utf::utf_traits <char, 1>::encode(*lhs_it++, out_it);
+				std::cerr << '\t' << j;
+			}
+
 			for (std::size_t i(0); i < m_columns; ++i)
 			{
 				std::cerr << '\t';
