@@ -58,6 +58,7 @@ namespace text_align { namespace matrices {
 	template <typename t_matrix>
 	typename t_matrix::slice_type row(t_matrix &matrix, std::size_t const row, std::size_t const first, std::size_t const limit)
 	{
+		assert(limit <= matrix.number_of_columns());
 		std::slice const slice(matrix.idx(row, first), limit - first, matrix.stride());
 		return typename t_matrix::slice_type(matrix, slice);
 	}
@@ -66,6 +67,7 @@ namespace text_align { namespace matrices {
 	template <typename t_matrix>
 	typename t_matrix::slice_type column(t_matrix &matrix, std::size_t const column, std::size_t const first, std::size_t const limit)
 	{
+		assert(limit <= matrix.number_of_rows());
 		std::slice const slice(matrix.idx(first, column), limit - first, 1);
 		return typename t_matrix::slice_type(matrix, slice);
 	}
@@ -74,6 +76,7 @@ namespace text_align { namespace matrices {
 	template <typename t_matrix>
 	typename t_matrix::const_slice_type const_row(t_matrix const &matrix, std::size_t const row, std::size_t const first, std::size_t const limit)
 	{
+		assert(limit <= matrix.number_of_columns());
 		std::slice const slice(matrix.idx(row, first), limit - first, matrix.stride());
 		return typename t_matrix::const_slice_type(matrix, slice);
 	}
@@ -82,6 +85,7 @@ namespace text_align { namespace matrices {
 	template <typename t_matrix>
 	typename t_matrix::const_slice_type const_column(t_matrix const &matrix, std::size_t const column, std::size_t const first, std::size_t const limit)
 	{
+		assert(limit <= matrix.number_of_rows());
 		std::slice const slice(matrix.idx(first, column), limit - first, 1);
 		return typename t_matrix::const_slice_type(matrix, slice);
 	}
@@ -126,8 +130,8 @@ namespace text_align { namespace matrices {
 			 	&dst,
 #endif
 				&dst_it
-			](typename t_src_matrix::word_type word){ // FIXME: memory_order_acquire?
-				for (std::size_t i(0); i < t_src_matrix::ELEMENT_COUNT; ++i)
+			](typename t_src_matrix::word_type word, std::size_t const element_count){ // FIXME: memory_order_acquire?
+				for (std::size_t i(0); i < element_count; ++i)
 				{
 					assert(dst_it != dst.end());
 					dst_it->fetch_or(word & t_src_matrix::ELEMENT_MASK); // FIXME: memory_order_release?
@@ -142,7 +146,7 @@ namespace text_align { namespace matrices {
 	template <typename t_src_matrix, typename t_dst_matrix>
 	void transpose_column_to_row(
 		::text_align::detail::packed_matrix_slice <t_src_matrix> const &src,
-		::text_align::detail::packed_matrix_slice <t_dst_matrix> &&dst	// May be proxy, thus moving is allowed.
+		::text_align::detail::packed_matrix_slice <t_dst_matrix> &&dst	// Proxy, allow moving.
 	)
 	{
 		transpose_column_to_row(src, dst);
@@ -151,15 +155,32 @@ namespace text_align { namespace matrices {
 	
 	template <unsigned int t_pattern_length, typename t_matrix>
 	void fill_column_with_bit_pattern(
-		typename t_matrix::slice_type &column,
+		::text_align::detail::packed_matrix_slice <t_matrix> &column,
 		typename t_matrix::word_type pattern
 	)
 	{
 		pattern = detail::fill_bit_pattern <t_pattern_length>(pattern);
 		auto word_range(column.to_word_range());
-		word_range.apply_left([pattern](auto &atomic, std::size_t const bits){ do_and_assert_eq(atomic.fetch_or(pattern << bits), 0); });
-		word_range.apply_mid([pattern](auto &atomic){ do_and_assert_eq(atomic.fetch_or(pattern), 0); });
-		word_range.apply_right([pattern](auto &atomic, std::size_t const bits){ do_and_assert_eq(atomic.fetch_or(pattern >> (t_matrix::WORD_BITS - bits)), 0); });
+		word_range.apply_parts(
+			[pattern](auto &atomic){ do_and_assert_eq(atomic.fetch_or(pattern), 0); },
+			[pattern](auto &atomic, std::size_t const offset, std::size_t const length){
+				assert(length);
+				auto p(pattern);
+				p >>= (t_matrix::WORD_BITS - length);
+				p <<= offset;
+				do_and_assert_eq(atomic.fetch_or(p), 0);
+			}
+		);
+	}
+	
+	
+	template <unsigned int t_pattern_length, typename t_matrix>
+	void fill_column_with_bit_pattern(
+		::text_align::detail::packed_matrix_slice <t_matrix> &&column,	// Proxy, allow moving.
+		typename t_matrix::word_type pattern
+	)
+	{
+		fill_column_with_bit_pattern <t_pattern_length>(column, pattern);
 	}
 }}
 

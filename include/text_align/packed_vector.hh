@@ -7,7 +7,10 @@
 #define TEXT_ALIGN_PACKED_VECTOR_HH
 
 #include <atomic>
-#include <experimental/iterator>
+#include <range/v3/algorithm/copy.hpp>
+#include <range/v3/utility/iterator.hpp>
+#include <range/v3/view/transform.hpp>
+#include <text_align/packed_word_range.hh>
 #include <vector>
 
 
@@ -44,6 +47,7 @@ namespace text_align { namespace detail {
 	struct packed_vector_iterator_traits
 	{
 		typedef typename t_vector::reference			reference;
+		typedef typename t_vector::iterator				iterator;
 		typedef typename t_vector::word_iterator		word_iterator;
 	};
 	
@@ -51,6 +55,7 @@ namespace text_align { namespace detail {
 	struct packed_vector_iterator_traits <t_vector, true>
 	{
 		typedef typename t_vector::const_reference		reference;
+		typedef typename t_vector::const_iterator		iterator;
 		typedef typename t_vector::const_word_iterator	word_iterator;
 	};
 	
@@ -89,6 +94,8 @@ namespace text_align { namespace detail {
 		}
 		
 		std::size_t index() const { return m_idx; }
+		std::size_t word_index() const { return m_idx / ELEMENT_COUNT; }
+		std::size_t word_offset() const { return m_idx % ELEMENT_COUNT; }
 		
 		virtual void advance(std::ptrdiff_t) = 0;
 		bool equal(packed_vector_iterator_base const &other) const { return m_vector == other.m_vector && m_idx == other.m_idx; }
@@ -98,9 +105,10 @@ namespace text_align { namespace detail {
 		typename traits::reference dereference() const { return m_vector->operator()(m_idx); }
 		
 		reference_proxy to_reference_proxy() const { return reference_proxy(*m_vector, m_idx); }
+		word_iterator to_containing_word_iterator() const { return m_vector->word_begin() + m_idx / ELEMENT_COUNT; }
 		word_iterator to_word_iterator() const
 		{
-			if (0 != m_idx % ELEMENT_COUNT)
+			if (0 != word_offset())
 				throw std::runtime_error("Unable to convert to word_iterator");
 			return m_vector->word_begin() + m_idx / ELEMENT_COUNT;
 		}
@@ -173,7 +181,8 @@ namespace text_align {
 		typedef detail::packed_vector_iterator <packed_vector const>	const_iterator;
 		
 		enum {
-			ELEMENT_COUNT	= WORD_BITS / t_bits,
+			ELEMENT_BITS		= t_bits,
+			ELEMENT_COUNT		= WORD_BITS / t_bits,
 			ELEMENT_MASK		= (std::numeric_limits <word_type>::max() >> (WORD_BITS - t_bits))
 		};
 	
@@ -229,10 +238,10 @@ namespace text_align {
 	template <unsigned int t_bits, typename t_word>
 	std::ostream &operator<<(std::ostream &os, packed_vector <t_bits, t_word> const &vec)
 	{
-		std::copy(vec.begin(), vec.end(), std::experimental::make_ostream_joiner(os, "\t"));
+		ranges::copy(vec | ranges::view::transform([](auto val){ return +val; }), ranges::make_ostream_joiner(os, "\t"));
 		return os;
 	}
-
+	
 	
 	template <unsigned int t_bits, typename t_word>
 	auto packed_vector <t_bits, t_word>::load(

@@ -6,6 +6,9 @@
 #ifndef TEXT_ALIGN_PACKED_MATRIX_HH
 #define TEXT_ALIGN_PACKED_MATRIX_HH
 
+#include <range/v3/algorithm/copy.hpp>
+#include <range/v3/utility/iterator.hpp>
+#include <range/v3/view/transform.hpp>
 #include <text_align/matrix_slice.hh>
 #include <text_align/matrix_utils.hh>
 #include <text_align/packed_matrix_fwd.hh>
@@ -33,7 +36,7 @@ namespace text_align { namespace detail {
 		typedef packed_vector_iterator <t_vector> 		vector_iterator;
 		
 	protected:
-		std::size_t m_stride{1};
+		std::ptrdiff_t m_stride{1}; // Needs to be signed b.c. used in a division below.
 		
 	public:
 		packed_matrix_iterator() = default;
@@ -62,8 +65,8 @@ namespace text_align { namespace detail {
 
 		std::ptrdiff_t distance_to(packed_matrix_iterator const &other) const
 		{
-			auto const dist(iterator_base::distance_to(*this, other));
-			assert(0 == dist % m_stride);
+			auto const dist(iterator_base::distance_to(other));
+			assert(0 == std::abs(dist) % m_stride);
 			auto const retval(dist / m_stride);
 			return retval;
 		}
@@ -98,10 +101,8 @@ namespace text_align {
 	template <unsigned int t_bits, typename t_word>
 	class packed_matrix
 	{
-	protected:
-		typedef packed_vector <t_bits, t_word>									vector_type;
-		
 	public:
+		typedef packed_vector <t_bits, t_word>									vector_type;
 		typedef typename vector_type::word_type									word_type;
 		typedef typename vector_type::reference_proxy							reference_proxy;
 		
@@ -226,7 +227,7 @@ namespace text_align {
 		for (std::size_t i(0); i < row_count; ++i)
 		{
 			auto const &row(matrix.row(i));
-			std::copy(row.begin(), row.end(), std::experimental::make_ostream_joiner(os, "\t"));
+			ranges::copy(row | ranges::view::transform([](auto val){ return +val; }), ranges::make_ostream_joiner(os, "\t"));
 			os << '\n';
 		}
 		return os;
