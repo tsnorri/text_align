@@ -10,6 +10,7 @@
 #include <iostream>
 #include <text_align/algorithm.hh>
 #include <text_align/matrix.hh>
+#include <text_align/matrix_utils.hh>
 #include <text_align/packed_matrix.hh>
 #include <tuple>
 #include <type_traits>
@@ -518,4 +519,76 @@ BOOST_AUTO_TEST_CASE(test_packed_matrix_transpose)
 		for (auto const &word : dst.word_range())
 			BOOST_TEST(0 == word.load());
 	}
+}
+
+
+BOOST_AUTO_TEST_CASE(test_packed_matrix_transpose_aligned_extent)
+{
+	// Source smaller than word size but word-aligned.
+	text_align::packed_matrix <2, std::uint16_t> src(4, 4);
+	text_align::packed_matrix <4, std::uint16_t> dst(4, 4);
+	
+	src(0, 0).fetch_or(0x3);
+	src(1, 0).fetch_or(0x0);
+	src(2, 0).fetch_or(0x1);
+	src(3, 0).fetch_or(0x2);
+	
+	for (std::size_t i(0); i < dst.number_of_rows(); ++i)
+	{
+		auto const &row(dst.row(i));
+		for (auto const val : row)
+			BOOST_TEST(0 == val);
+	}
+	
+	text_align::matrices::transpose_column_to_row(src.column(0), dst.row(0));
+	
+	for (std::size_t i(1); i < dst.number_of_rows(); ++i)
+	{
+		auto const &row(dst.row(i));
+		for (auto const val : row)
+			BOOST_TEST(0 == val);
+	}
+
+	BOOST_TEST(0x3 == dst(0, 0));
+	BOOST_TEST(0x0 == dst(0, 1));
+	BOOST_TEST(0x1 == dst(0, 2));
+	BOOST_TEST(0x2 == dst(0, 3));
+}
+
+
+BOOST_AUTO_TEST_CASE(test_packed_matrix_fill)
+{
+	text_align::packed_matrix <2, std::uint8_t> mat(5, 2);
+	for (std::size_t i(0); i < mat.number_of_columns(); ++i)
+	{
+		for (auto const val : mat.column(i))
+			BOOST_TEST(0 == val);
+	}
+	
+	text_align::matrices::fill_column_with_bit_pattern <2>(mat.column(0), 0x1);
+	
+	for (auto const val : mat.column(0))
+		BOOST_TEST(0x1 == val);
+	for (auto const val : mat.column(1))
+		BOOST_TEST(0x0 == val);
+}
+
+
+BOOST_AUTO_TEST_CASE(test_packed_matrix_fill_2)
+{
+	text_align::packed_matrix <2, std::uint8_t> mat(5, 3);
+	for (std::size_t i(0); i < mat.number_of_columns(); ++i)
+	{
+		for (auto const val : mat.column(i))
+			BOOST_TEST(0 == val);
+	}
+	
+	text_align::matrices::fill_column_with_bit_pattern <2>(mat.column(1), 0x1);
+
+	for (auto const val : mat.column(0))
+		BOOST_TEST(0x0 == val);
+	for (auto const val : mat.column(1))
+		BOOST_TEST(0x1 == val);
+	for (auto const val : mat.column(2))
+		BOOST_TEST(0x0 == val);
 }
