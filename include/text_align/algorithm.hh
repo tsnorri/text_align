@@ -165,6 +165,14 @@ namespace text_align {
 	}
 	
 	
+	// Simpler variant of std::experimental::make_array.
+	template <typename t_value, typename ... t_args>
+	constexpr auto make_array(t_args && ... args) -> std::array <t_value, sizeof...(t_args)>
+	{
+		return {std::forward <t_args>(args)...};
+	}
+	
+	
 	template <typename t_coll>
 	void resize_and_fill_each(t_coll &vec_collection, std::size_t const size)
 	{
