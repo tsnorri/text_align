@@ -17,14 +17,14 @@ namespace text_align { namespace smith_waterman { namespace detail {
 	protected:
 		typedef typename t_owner::context_type			context_type;
 		typedef typename t_owner::score_type			score_type;
-		typedef typename t_owner::score_matrix			score_matrix;
 		typedef typename t_owner::arrow_type			arrow_type;
 		typedef typename t_owner::gap_score_gt_type		gap_score_gt_type;
+		typedef typename t_owner::score_vector			score_vector;
+		typedef typename t_owner::score_matrix			score_matrix;
 
 	protected:
 		// Pointers from t_owner.
-		// FIXME: make m_owner const?
-		t_owner							*m_owner{};
+		t_owner							*m_owner{};	// Not const b.c. finish() requires mutability.
 		context_type					*m_ctx{};
 		aligner_data <t_owner>			*m_data{};
 		aligner_parameters <score_type>	*m_parameters{};
