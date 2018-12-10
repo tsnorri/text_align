@@ -52,9 +52,9 @@ namespace text_align { namespace detail {
 		if (begin.word_index() == end.word_index())
 		{
 			// The range is inside one word.
-			auto mid_it(begin.to_containing_word_iterator());
+			auto mid_it(begin.to_containing_word_iterator() + 1);
 			m_mid = word_iterator_range(mid_it, mid_it);
-			m_right_extent = iterator_range(begin, end);
+			m_left_extent = iterator_range(begin, end);
 		}
 		else
 		{
@@ -141,7 +141,7 @@ namespace text_align { namespace detail {
 			auto const left_bits(left_size * ELEMENT_BITS);
 			assert(left_bits < WORD_BITS);
 			auto word((m_mid.begin() - 1)->load(order));
-			word >>= (WORD_BITS - left_bits);
+			word >>= (m_left_extent.begin().word_offset() * ELEMENT_BITS);
 			for (auto const &atomic : m_mid)
 			{
 				auto const next_word(atomic.load(order));
@@ -151,7 +151,11 @@ namespace text_align { namespace detail {
 			}
 			
 			if (m_right_extent.empty())
-				unary_fn(word, left_size);
+			{
+				// Just after the else before, we checked that left_bits < WORD_BITS. Hence, shifting is safe.
+				word_type const mask((0x1 << left_bits) - 1);
+				unary_fn(word & mask, left_size);
+			}
 			else
 			{
 				auto const right_size(m_right_extent.size());
