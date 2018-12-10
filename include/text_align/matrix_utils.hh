@@ -114,6 +114,32 @@ namespace text_align { namespace matrices {
 	}
 	
 	
+	template <typename t_matrix>
+	void copy_to_word_aligned(
+		::text_align::detail::packed_matrix_slice <t_matrix> const &src,
+		::text_align::detail::packed_matrix_slice <t_matrix> &dst
+	)
+	{
+		assert(src.size() <= dst.size());
+		always_assert(dst.is_word_aligned());
+		auto dst_it(dst.word_begin());
+		src.to_word_range().apply_aligned([&dst_it](auto word, std::size_t element_count){
+			dst_it->store(word);
+			++dst_it;
+		});
+	}
+	
+	
+	template <typename t_matrix>
+	void copy_to_word_aligned(
+		::text_align::detail::packed_matrix_slice <t_matrix> const &src,
+		::text_align::detail::packed_matrix_slice <t_matrix> &&dst	// Proxy, allow moving.
+	)
+	{
+		copy_to_word_aligned(src, dst);
+	}
+	
+	
 	template <typename t_src_matrix, typename t_dst_matrix>
 	void transpose_column_to_row(
 		::text_align::detail::packed_matrix_slice <t_src_matrix> const &src,
