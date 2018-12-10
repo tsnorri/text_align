@@ -187,6 +187,20 @@ namespace text_align {
 	
 	
 	template <typename t_value>
+	std::ostream &operator<<(std::ostream &os, matrix <t_value> const &matrix)
+	{
+		auto const row_count(matrix.number_of_rows());
+		for (std::size_t i(0); i < row_count; ++i)
+		{
+			auto const &row(matrix.row(i));
+			ranges::copy(row | ranges::view::transform([](auto val){ return +val; }), ranges::make_ostream_joiner(os, "\t"));
+			os << '\n';
+		}
+		return os;
+	}
+	
+	
+	template <typename t_value>
 	void matrix <t_value>::resize_if_needed(std::size_t const rows, std::size_t const columns)
 	{
 		if (number_of_rows() < rows || number_of_columns() < columns)
