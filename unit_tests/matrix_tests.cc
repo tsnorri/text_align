@@ -592,3 +592,47 @@ BOOST_AUTO_TEST_CASE(test_packed_matrix_fill_2)
 	for (auto const val : mat.column(2))
 		BOOST_TEST(0x0 == val);
 }
+
+
+BOOST_AUTO_TEST_CASE(test_packed_matrix_copy_mid_bits)
+{
+	text_align::packed_matrix <2, std::uint32_t> src(16, 1);
+	text_align::packed_matrix <2, std::uint32_t> dst(16, 1);
+	
+	src(1, 0).fetch_or(0x1);
+	src(2, 0).fetch_or(0x2);
+	src(3, 0).fetch_or(0x3);
+	
+	auto const col(src.column(0, 1, 4));
+	text_align::matrices::copy_to_word_aligned(col, dst.column(0));
+	
+	BOOST_TEST(0x1 == dst(0, 0));
+	BOOST_TEST(0x2 == dst(1, 0));
+	BOOST_TEST(0x3 == dst(2, 0));
+	for (std::size_t i(3); i < dst.number_of_rows(); ++i)
+		BOOST_TEST(0x0 == dst(i, 0));
+}
+
+
+BOOST_AUTO_TEST_CASE(test_packed_matrix_copy_mid_bits_skip_extra)
+{
+	text_align::packed_matrix <2, std::uint32_t> src(16, 1);
+	text_align::packed_matrix <2, std::uint32_t> dst(16, 1);
+	
+	src(1, 0).fetch_or(0x1);
+	src(2, 0).fetch_or(0x2);
+	src(3, 0).fetch_or(0x3);
+	// Extra values that should not be copied.
+	src(4, 0).fetch_or(0x1);
+	src(5, 0).fetch_or(0x1);
+	src(6, 0).fetch_or(0x1);
+	
+	auto const col(src.column(0, 1, 4));
+	text_align::matrices::copy_to_word_aligned(col, dst.column(0));
+	
+	BOOST_TEST(0x1 == dst(0, 0));
+	BOOST_TEST(0x2 == dst(1, 0));
+	BOOST_TEST(0x3 == dst(2, 0));
+	for (std::size_t i(3); i < dst.number_of_rows(); ++i)
+		BOOST_TEST(0x0 == dst(i, 0));
+}
