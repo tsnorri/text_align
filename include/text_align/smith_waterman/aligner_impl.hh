@@ -57,6 +57,9 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			score_type gap_score_rhs{};
 			std::uint8_t max_idx{};
 			gap_score_gt_type is_gap_score_gt{};
+			
+			score_result() = default;
+			score_result(score_type score_): score(score_) {}
 		};
 			
 		inline void copy_to_score_buffer(
@@ -121,6 +124,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		score_result &result
 	) const
 	{
+		// Calculate the score for (i + 1, j + 1).
 		auto const identity_score(this->m_parameters->identity_score);
 		auto const mismatch_penalty(this->m_parameters->mismatch_penalty);
 		auto const gap_start_penalty(this->m_parameters->gap_start_penalty);
@@ -175,26 +179,30 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		// Then, for each subsequent column, take dst_buffer_ptr, fill the value on the first row with a precalculated one
 		// and calculate the scores for each row. After the last row of each column, consider filling the next row of
 		// values to be used as pre-calculated ones for the next block downwards. Finally, swap the buffers and repeat.
-		// When the column limit is reached, consider again filling the next column to the right.
+		// When the column limit is reached, consider again filling the next column to the right, including the top-left cell
+		// in the next block diagonally to bottom-right from the current one.
 		// If output_score_buffer was given, after filling a column copy its contents there.
 		
 		auto const segment_length(this->m_owner->segment_length());
 		
-		// Scoring matrix index limits.
+		// Scoring matrix limits. Note that later, one is subtracted b.c.
+		// the last row and column (in the adjacent blocks) are handled separately.
 		auto const lhs_idx(segment_length * lhs_block_idx);
 		auto const rhs_idx(segment_length * rhs_block_idx);
-		auto const lhs_limits(make_array <std::size_t>(this->m_parameters->lhs_length, lhs_idx + segment_length - 1));
-		auto const rhs_limits(make_array <std::size_t>(this->m_parameters->rhs_length, rhs_idx + segment_length - 1));
+		auto const lhs_limits(make_array <std::size_t>(1 + this->m_parameters->lhs_length, lhs_idx + segment_length));
+		auto const rhs_limits(make_array <std::size_t>(1 + this->m_parameters->rhs_length, rhs_idx + segment_length));
 		bool const should_calculate_final_row(argmin_element(lhs_limits.begin(), lhs_limits.end()));
 		bool const should_calculate_final_column(argmin_element(rhs_limits.begin(), rhs_limits.end()));
 		auto const lhs_limit(lhs_limits[should_calculate_final_row]);
 		auto const rhs_limit(rhs_limits[should_calculate_final_column]);
-		
+		assert(lhs_limit - lhs_idx <= segment_length);
+		assert(rhs_limit - rhs_idx <= segment_length);
+
 		// Score buffers.
 		auto *src_buffer_ptr(&this->m_data->score_buffer_1);
 		auto *dst_buffer_ptr(&this->m_data->score_buffer_2);
 		
-		// Fill the first column.
+		// Fill the first column up to what is needed.
 		{
 			auto const column(this->m_lhs->score_samples.column(rhs_block_idx));
 			auto const it(column.begin());
@@ -218,14 +226,15 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		std::advance(lhs_it, lhs_idx);
 		std::advance(rhs_it, rhs_idx);
 		
-		// Fill output_score_buffer if needed. For the first column, the final row has not been filled.
+		// Fill output_score_buffer if needed.
 		if (output_score_buffer)
 			copy_to_score_buffer(*src_buffer_ptr, 0, lhs_idx, lhs_limit, *output_score_buffer);
 		
-		// Fill the block.
-		score_result result;
+		// Fill the block. Initialize the result with the final value of the first column in case
+		// it is the only column to fill.
+		score_result result((*src_buffer_ptr)[lhs_limit - 1]);
 		auto const &gap_scores_rhs(this->m_rhs->gap_score_samples.column(lhs_block_idx));
-		for (std::size_t i(rhs_idx); i < rhs_limit; ++i) // Column
+		for (std::size_t i(rhs_idx); i < rhs_limit - 1; ++i) // Column
 		{
 			assert(rhs_it != m_rhs_text->end());
 			
@@ -236,7 +245,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			// Fill the first row, needed for the first value of prev_diag_score on the next iteration.
 			(*dst_buffer_ptr)[lhs_idx] = topmost_row[1 + i];
 			
-			for (std::size_t j(lhs_idx); j < lhs_limit; ++j) // Row
+			for (std::size_t j(lhs_idx); j < lhs_limit - 1; ++j) // Row
 			{
 				assert(lhs_it_2 != m_lhs_text->end());
 				auto const lhs_c(*lhs_it_2);
@@ -266,8 +275,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				assert(lhs_it_2 != m_lhs_text->end());
 				
 				auto const lhs_c(*lhs_it_2);
-				auto const prev_diag_score((*src_buffer_ptr)[lhs_limit]);
-				calculate_score(prev_diag_score, lhs_c, rhs_c, lhs_limit, i, gap_score_rhs, result);
+				auto const prev_diag_score((*src_buffer_ptr)[lhs_limit - 1]);
+				calculate_score(prev_diag_score, lhs_c, rhs_c, lhs_limit - 1, i, gap_score_rhs, result);
 				
 				this->m_rhs->score_samples(1 + i, 1 + lhs_block_idx)		= result.score;									// Horizontal
 				this->m_rhs->gap_score_samples(1 + i, 1 + lhs_block_idx)	= result.gap_score_rhs;							// Horizontal
@@ -275,9 +284,9 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				do_and_assert_eq(this->m_rhs->initial_traceback(1 + i, 1 + lhs_block_idx).fetch_or(result.max_idx), 0);		// Horizontal, values same as arrow_type::*
 			}
 			
-			// Copy to output_score_buffer if needed. For these columns, the value of the final row is relevant (hence 1 + lhs_limit).
+			// Copy to output_score_buffer if needed. For these columns, the value of the final row is relevant (hence lhs_limit, not -1).
 			if (output_score_buffer)
-				copy_to_score_buffer(*dst_buffer_ptr, i - rhs_idx + 1, lhs_idx, 1 + lhs_limit, *output_score_buffer);
+				copy_to_score_buffer(*dst_buffer_ptr, i - rhs_idx + 1, lhs_idx, lhs_limit, *output_score_buffer);
 			
 			// Swap src and dst.
 			{
@@ -295,8 +304,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			
 			auto const rhs_c(*rhs_it);
 			auto lhs_it_2(lhs_it);
-			score_type gap_score_rhs(gap_scores_rhs[rhs_limit]);
-			auto const limit(lhs_limit + should_calculate_final_row); // Consider the bottom-right corner.
+			score_type gap_score_rhs(gap_scores_rhs[rhs_limit - 1]);
+			auto const limit(lhs_limit + should_calculate_final_row - 1); // Consider the bottom-right corner.
 
 			for (std::size_t j(lhs_idx); j < limit; ++j) // Row
 			{
@@ -304,12 +313,14 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				
 				auto const lhs_c(*lhs_it_2);
 				auto const prev_diag_score((*src_buffer_ptr)[j]);
-				calculate_score(prev_diag_score, lhs_c, rhs_c, j, rhs_limit, gap_score_rhs, result);
+				calculate_score(prev_diag_score, lhs_c, rhs_c, j, rhs_limit - 1, gap_score_rhs, result);
 				
 				this->m_lhs->score_samples(1 + j, 1 + rhs_block_idx)		= result.score;									// Vertical
 				this->m_lhs->gap_score_samples(1 + j, 1 + rhs_block_idx)	= result.gap_score_lhs;							// Vertical
 				do_and_assert_eq(this->m_lhs->gap_score_gt(1 + j, 1 + rhs_block_idx).fetch_or(result.is_gap_score_gt), 0);	// Vertical
 				do_and_assert_eq(this->m_lhs->initial_traceback(1 + j, 1 + rhs_block_idx).fetch_or(result.max_idx), 0);		// Vertical, values same as arrow_type::*
+				
+				++lhs_it_2;
 			}
 		}
 		
@@ -344,8 +355,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		// lhs_idx and rhs_idx point to the upper left corner of the final block, that is, the bottom-right one.
 		auto const lhs_idx(seg_len * lhs_block_idx);
 		auto const rhs_idx(seg_len * rhs_block_idx);
-		assert(lhs_idx < lhs_len);
-		assert(rhs_idx < rhs_len);
+		assert(lhs_idx <= lhs_len);
+		assert(rhs_idx <= rhs_len);
 		std::size_t j_limit(min(seg_len, 1 + lhs_len - lhs_idx)); // (Last) row
 		std::size_t i_limit(min(seg_len, 1 + rhs_len - rhs_idx)); // (Last) column
 		auto j(j_limit - 1);
