@@ -98,7 +98,7 @@ int main(int argc, char **argv)
 	if (args_info.print_invocation_flag)
 	{
 		std::cerr << "Invocation:";
-		for (std::size_t i(0); i < argc; ++i)
+		for (int i(0); i < argc; ++i)
 			std::cerr << ' ' << argv[i];
 		std::cerr << '\n';
 	}
@@ -108,7 +108,9 @@ int main(int argc, char **argv)
 	ta::map_on_stack_fn <string_view_from_input>(
 		[&args_info](std::string_view const &lhsv, std::string_view const &rhsv) {
 			
-			ta::smith_waterman::alignment_context <std::int32_t> ctx;
+			typedef ta::smith_waterman::alignment_context <std::int32_t> alignment_context_type;
+			
+			alignment_context_type ctx;
 			auto &aligner(ctx.aligner());
 			
 			auto const match_score(args_info.match_score_arg);
@@ -121,12 +123,6 @@ int main(int argc, char **argv)
 			if (block_size < 0)
 			{
 				std::cerr << "Block size needs to be non-negative." << std::endl;
-				exit(EXIT_FAILURE);
-			}
-			
-			if (0 != block_size % 64)
-			{
-				std::cerr << "Block size needs to be a multiple of 64." << std::endl;
 				exit(EXIT_FAILURE);
 			}
 			
