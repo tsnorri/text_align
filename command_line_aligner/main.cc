@@ -108,7 +108,7 @@ int main(int argc, char **argv)
 	ta::map_on_stack_fn <string_view_from_input>(
 		[&args_info](std::string_view const &lhsv, std::string_view const &rhsv) {
 			
-			typedef ta::smith_waterman::alignment_context <std::int32_t> alignment_context_type;
+			typedef ta::smith_waterman::alignment_context <std::int32_t, std::uint16_t> alignment_context_type;
 			
 			alignment_context_type ctx;
 			auto &aligner(ctx.aligner());

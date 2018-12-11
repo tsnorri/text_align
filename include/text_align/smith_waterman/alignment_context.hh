@@ -12,11 +12,11 @@
 namespace text_align { namespace smith_waterman {
 	
 	// Hold both an aligner and an IO context.
-	template <typename t_score, template <typename, typename> class t_aligner>
+	template <typename t_score, typename t_word, template <typename, typename, typename> class t_aligner>
 	class alignment_context_tpl
 	{
 	protected:
-		typedef t_aligner <t_score, alignment_context_tpl>	aligner_type;
+		typedef t_aligner <t_score, t_word, alignment_context_tpl>	aligner_type;
 		
 		friend aligner_type;
 		
@@ -43,8 +43,8 @@ namespace text_align { namespace smith_waterman {
 	};
 	
 	
-	template <typename t_score>
-	using alignment_context = alignment_context_tpl <t_score, aligner>;
+	template <typename t_score, typename t_word>
+	using alignment_context = alignment_context_tpl <t_score, t_word, aligner>;
 }}
 
 #endif

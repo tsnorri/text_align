@@ -19,7 +19,7 @@
 
 namespace text_align { namespace smith_waterman {
 	
-	template <typename t_score, typename t_delegate>
+	template <typename t_score, typename t_word, typename t_delegate>
 	class aligner : public aligner_base
 	{
 		static_assert(std::is_integral_v <t_score>, "Expected t_score to be a signed integer type.");
@@ -34,11 +34,16 @@ namespace text_align { namespace smith_waterman {
 		enum {
 			SCORE_MIN		= std::numeric_limits <t_score>::min()
 		};
-		
-		typedef aligner_base::word_type					word_type;
+
+		typedef t_word									word_type;
 		typedef t_score									score_type;
 		typedef std::vector <score_type>				score_vector;
 		typedef matrix <score_type>						score_matrix;
+		typedef packed_matrix <2, word_type>			traceback_matrix;
+		typedef packed_matrix <2, word_type>			direction_matrix;
+		typedef packed_matrix <2, word_type>			gap_score_gt_matrix;
+		typedef packed_matrix <1, word_type>			flag_matrix;
+
 		typedef detail::aligner_impl_base <aligner>		impl_base_type;
 		typedef boost::asio::thread_pool				context_type;
 		
@@ -112,18 +117,18 @@ namespace text_align { namespace smith_waterman {
 	
 	
 	// Align the given strings.
-	template <typename t_score, typename t_delegate>
+	template <typename t_score, typename t_word, typename t_delegate>
 	template <typename t_lhs, typename t_rhs>
-	void aligner <t_score, t_delegate>::align(t_lhs const &lhs, t_rhs const &rhs)
+	void aligner <t_score, t_word, t_delegate>::align(t_lhs const &lhs, t_rhs const &rhs)
 	{
 		align(lhs, rhs, lhs.size(), rhs.size());
 	}
 	
 	
 	// Align the given strings.
-	template <typename t_score, typename t_delegate>
+	template <typename t_score, typename t_word, typename t_delegate>
 	template <typename t_lhs, typename t_rhs>
-	void aligner <t_score, t_delegate>::align(
+	void aligner <t_score, t_word, t_delegate>::align(
 		t_lhs const &lhs,
 		t_rhs const &rhs,
 		std::size_t const lhs_len,

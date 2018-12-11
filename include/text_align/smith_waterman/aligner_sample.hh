@@ -16,10 +16,10 @@ namespace text_align { namespace smith_waterman { namespace detail {
 	template <typename t_aligner>
 	struct aligner_sample
 	{
-		typedef typename t_aligner::score_matrix	score_matrix;
-		typedef aligner_base::gap_score_gt_matrix	gap_score_gt_matrix;
-		typedef aligner_base::direction_matrix		direction_matrix;
-		typedef aligner_base::bit_vector			bit_vector;
+		typedef typename t_aligner::score_matrix		score_matrix;
+		typedef typename t_aligner::gap_score_gt_matrix	gap_score_gt_matrix;
+		typedef typename t_aligner::direction_matrix	direction_matrix;
+		typedef aligner_base::bit_vector				bit_vector;
 		
 		score_matrix		score_samples;			// Sample vectors.
 		score_matrix		gap_score_samples;		// Sample vectors for max{}.

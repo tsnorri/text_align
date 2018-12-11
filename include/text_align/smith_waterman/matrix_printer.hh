@@ -20,8 +20,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 	public:
 		typedef aligner_base::bit_vector		bit_vector;
 		typedef aligner_base::arrow_type		arrow_type;
-		typedef aligner_base::traceback_matrix	traceback_matrix;
-			
+		
 	protected:
 		bit_vector	m_lhs_gaps{};
 		bit_vector	m_rhs_gaps{};
@@ -63,7 +62,9 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		void set_padding(std::size_t padding) { m_padding = padding; }
 
 		void print_header();
-		void print_traceback(traceback_matrix const &tb);
+		
+		template <typename t_matrix>
+		void print_traceback(t_matrix const &tb);
 		
 		template <typename t_score>
 		void print_scores(matrix <t_score> const &scores);
@@ -210,7 +211,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 	
 	
 	template <typename t_lhs_it, typename t_rhs_it>
-	void matrix_printer <t_lhs_it, t_rhs_it>::print_traceback(traceback_matrix const &tb)
+	template <typename t_matrix>
+	void matrix_printer <t_lhs_it, t_rhs_it>::print_traceback(t_matrix const &tb)
 	{
 		m_gap_idx = 0;
 		m_path_x = 0;
