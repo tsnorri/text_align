@@ -124,7 +124,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		score_result &result
 	) const
 	{
-		// Calculate the score for (i + 1, j + 1).
+		// Calculate the score for (j + 1, i + 1).
 		auto const identity_score(this->m_parameters->identity_score);
 		auto const mismatch_penalty(this->m_parameters->mismatch_penalty);
 		auto const gap_start_penalty(this->m_parameters->gap_start_penalty);
@@ -538,8 +538,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			if (print_debugging_information)
 			{
 				matrix_printer printer(
-					i_limit,
 					j_limit,
+					i_limit,
 					this->m_lhs->gaps,
 					this->m_rhs->gaps,
 					m_lhs_text->begin(),
@@ -562,8 +562,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		if (print_debugging_information)
 		{
 			matrix_printer printer(
-				i_limit,
 				j_limit,
+				i_limit,
 				this->m_lhs->gaps,
 				this->m_rhs->gaps,
 				m_lhs_text->begin(),
