@@ -38,6 +38,7 @@ namespace text_align { namespace detail {
 	public:
 		word_type load(std::memory_order order = std::memory_order_seq_cst) const { return m_vector->load(m_idx, order); }
 		word_type fetch_or(word_type val, std::memory_order const order = std::memory_order_seq_cst) { return m_vector->fetch_or(m_idx, val, order); }
+		word_type fetch_and(word_type val, std::memory_order const order = std::memory_order_seq_cst) { return m_vector->fetch_and(m_idx, val, order); }
 		
 		operator word_type() const { return load(); }
 	};
@@ -201,6 +202,7 @@ namespace text_align {
 		// Primitives.
 		word_type load(std::size_t const idx, std::memory_order = std::memory_order_seq_cst) const;
 		word_type fetch_or(std::size_t const idx, word_type val, std::memory_order const = std::memory_order_seq_cst);
+		word_type fetch_and(std::size_t const idx, word_type val, std::memory_order const = std::memory_order_seq_cst);
 		
 		word_type operator()(std::size_t const idx, std::memory_order order = std::memory_order_seq_cst) const { return load(idx, order); }
 		reference_proxy operator()(std::size_t const idx) { return reference_proxy(*this, idx); }
@@ -264,6 +266,8 @@ namespace text_align {
 		std::memory_order const order
 	) -> word_type
 	{
+		// Determine the position of the given index
+		// inside a word and shift the given value.
 		assert(idx < m_size);
 		assert(val == (val & ELEMENT_MASK));
 
@@ -275,6 +279,33 @@ namespace text_align {
 		val <<= shift_amt;
 		
 		word_type const retval(m_values[word_idx].fetch_or(val, order));
+		return ((retval >> shift_amt) & ELEMENT_MASK);
+	}
+		
+		
+	template <unsigned int t_bits, typename t_word>
+	auto packed_vector <t_bits, t_word>::fetch_and(
+		std::size_t const idx,
+		word_type val,
+		std::memory_order const order
+	) -> word_type
+	{
+		// Create a mask that has all bits set except for the given value.
+		// Then use bitwise or with the given value and use fetch_and.
+		assert(idx < m_size);
+		assert(val == (val & ELEMENT_MASK));
+		
+		word_type mask(ELEMENT_MASK);
+		auto const word_idx(idx / ELEMENT_COUNT);
+		auto const el_idx(idx % ELEMENT_COUNT);
+		auto const shift_amt(t_bits * el_idx);
+		
+		mask <<= shift_amt;
+		val <<= shift_amt;
+		mask = ~mask;
+		val |= mask;
+		
+		word_type const retval(m_values[word_idx].fetch_and(val, order));
 		return ((retval >> shift_amt) & ELEMENT_MASK);
 	}
 }
