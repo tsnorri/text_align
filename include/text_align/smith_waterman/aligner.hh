@@ -113,8 +113,31 @@ namespace text_align { namespace smith_waterman {
 		bit_vector &rhs_gaps() { return m_rhs.gaps; };
 		bit_vector const &lhs_gaps() const { return m_lhs.gaps; };
 		bit_vector const &rhs_gaps() const { return m_rhs.gaps; };
+		
+	protected:
+		void fill_gap_scores(typename score_matrix::slice_type &slice) const;
+		void fill_gap_scores(typename score_matrix::slice_type &&slice) const;
 	};
 	
+	
+	template <typename t_score, typename t_word, typename t_delegate>
+	void aligner <t_score, t_word, t_delegate>::fill_gap_scores(typename score_matrix::slice_type &slice) const
+	{
+		std::size_t idx(0);
+		for (auto &val : slice)
+		{
+			val = idx * m_parameters.gap_penalty;
+			++idx;
+		}
+	}
+	
+	
+	template <typename t_score, typename t_word, typename t_delegate>
+	void aligner <t_score, t_word, t_delegate>::fill_gap_scores(typename score_matrix::slice_type &&slice) const
+	{
+		fill_gap_scores(slice);
+	}
+
 	
 	// Align the given strings.
 	template <typename t_score, typename t_word, typename t_delegate>
@@ -179,6 +202,12 @@ namespace text_align { namespace smith_waterman {
 		std::fill(m_rhs.score_samples.begin(), m_rhs.score_samples.end(), 0);
 		std::fill(m_lhs.gap_score_samples.begin(), m_lhs.gap_score_samples.end(), 0);
 		std::fill(m_rhs.gap_score_samples.begin(), m_rhs.gap_score_samples.end(), 0);
+		
+		// Fill the first vectors with gap scores.
+		fill_gap_scores(m_lhs.score_samples.column(0));
+		fill_gap_scores(m_rhs.score_samples.column(0));
+		fill_gap_score_samples(m_lhs.gap_score_samples.column(0));
+		fill_gap_score_samples(m_rhs_gap_score_samples.column(0));
 		
 		resize_and_zero(m_data.score_buffer_1, 1 + lhs_len);				// Vertical.
 		resize_and_zero(m_data.score_buffer_2, 1 + lhs_len);				// Vertical.
