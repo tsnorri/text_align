@@ -147,7 +147,8 @@ namespace text_align { namespace smith_waterman {
 		{
 			auto const max_len(std::max(lhs_len, rhs_len));
 			auto const sqrt(std::sqrt(max_len));
-			m_parameters.segment_length = sqrt;
+			auto const length(std::ceil(sqrt / traceback_matrix::ELEMENT_COUNT) * traceback_matrix::ELEMENT_COUNT);
+			m_parameters.segment_length = length;
 		}
 		
 		// Count the segments.
