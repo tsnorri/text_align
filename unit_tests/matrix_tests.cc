@@ -9,11 +9,18 @@
 
 #include <iostream>
 #include <text_align/algorithm.hh>
+#include <text_align/code_point_iterator.hh>
 #include <text_align/matrix.hh>
 #include <text_align/matrix_utils.hh>
 #include <text_align/packed_matrix.hh>
+#include <text_align/smith_waterman/aligner.hh>
+#include <text_align/smith_waterman/alignment_context.hh>
+
 #include <tuple>
 #include <type_traits>
+
+
+namespace ta = text_align;
 
 
 typedef std::tuple <
@@ -28,6 +35,12 @@ typedef std::tuple <
 	float,
 	double
 > all_test_types;
+
+// For aligner tests.
+typedef std::int32_t score_type;
+
+template <typename t_block>
+using alignment_context_type = text_align::smith_waterman::alignment_context <score_type, t_block>;
 
 
 template <typename t_value>
@@ -79,6 +92,51 @@ void create_packed_matrix_7x3(text_align::packed_matrix <4, std::uint16_t> &dst)
 	
 	using std::swap;
 	swap(temp, dst);
+}
+
+
+template <typename t_range>
+std::size_t copy_distance(t_range range)
+{
+	return boost::distance(range);
+}
+
+template <typename t_block>
+void run_aligner(
+	alignment_context_type <t_block> &ctx,
+	std::string const &lhs,
+	std::string const &rhs,
+	typename alignment_context_type <t_block>::aligner_type::bit_vector const &expected_lhs,
+	typename alignment_context_type <t_block>::aligner_type::bit_vector const &expected_rhs,
+	score_type const expected_score,
+	std::size_t const block_size,
+	score_type const match_score,
+	score_type const mismatch_penalty,
+	score_type const gap_start_penalty,
+	score_type const gap_penalty
+)
+{
+	auto &aligner(ctx.aligner());
+
+	aligner.set_segment_length(block_size);
+	aligner.set_identity_score(match_score);
+	aligner.set_mismatch_penalty(mismatch_penalty);
+	aligner.set_gap_start_penalty(gap_start_penalty);
+	aligner.set_gap_penalty(gap_penalty);
+	
+	auto const lhsr(ta::make_code_point_iterator_range(lhs.cbegin(), lhs.cend()));
+	auto const rhsr(ta::make_code_point_iterator_range(rhs.cbegin(), rhs.cend()));
+	auto const lhs_len(copy_distance(lhsr));
+	auto const rhs_len(copy_distance(rhsr));
+	assert(lhsr.begin() != lhsr.end());
+	assert(rhsr.begin() != rhsr.end());
+	
+	aligner.align(lhsr, rhsr, lhs_len, rhs_len);
+	ctx.run();
+	
+	BOOST_TEST(aligner.alignment_score() == expected_score);
+	BOOST_TEST(aligner.lhs_gaps() == expected_lhs);
+	BOOST_TEST(aligner.rhs_gaps() == expected_rhs);
 }
 
 
@@ -635,4 +693,52 @@ BOOST_AUTO_TEST_CASE(test_packed_matrix_copy_mid_bits_skip_extra)
 	BOOST_TEST(0x3 == dst(2, 0));
 	for (std::size_t i(3); i < dst.number_of_rows(); ++i)
 		BOOST_TEST(0x0 == dst(i, 0));
+}
+
+
+BOOST_AUTO_TEST_CASE(test_aligner_0)
+{
+	typedef alignment_context_type <std::uint16_t> alignment_context;
+	typedef typename alignment_context::aligner_type::bit_vector bit_vector;
+	
+	bit_vector const lhs(4, 0x0);
+	bit_vector const rhs(4, 0x0);
+	alignment_context ctx;
+	run_aligner(ctx, "asdf", "asdf", lhs, rhs, 8, 8, 2, -2, -2, -1);
+}
+
+
+BOOST_AUTO_TEST_CASE(test_aligner_1)
+{
+	typedef alignment_context_type <std::uint16_t> alignment_context;
+	typedef typename alignment_context::aligner_type::bit_vector bit_vector;
+	
+	bit_vector const lhs(5, 0x0);
+	bit_vector const rhs(5, 0x2);
+	alignment_context ctx;
+	run_aligner(ctx, "xaasd", "xasd", lhs, rhs, 4, 8, 2, -2, -2, -1);
+}
+
+
+BOOST_AUTO_TEST_CASE(test_aligner_2_16)
+{
+	typedef alignment_context_type <std::uint16_t> alignment_context;
+	typedef typename alignment_context::aligner_type::bit_vector bit_vector;
+
+	bit_vector const lhs(10, 0x0);
+	bit_vector const rhs(10, 0x42);
+	alignment_context ctx;
+	run_aligner(ctx, "xaasdxaasd", "xasdxasd", lhs, rhs, 4, 8, 2, -2, -2, -1);
+}
+
+
+BOOST_AUTO_TEST_CASE(test_aligner_2_32)
+{
+	typedef alignment_context_type <std::uint32_t> alignment_context;
+	typedef typename alignment_context::aligner_type::bit_vector bit_vector;
+	
+	bit_vector const lhs(10, 0x0);
+	bit_vector const rhs(10, 0x42);
+	alignment_context ctx;
+	run_aligner(ctx, "xaasdxaasd", "xasdxasd", lhs, rhs, 8, 32, 2, -2, -2, -1);
 }
