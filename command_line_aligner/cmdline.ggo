@@ -18,12 +18,13 @@ groupoption	"rhs-file"					R	"Right input file"				string	typestr = "PATH"	group
 
 section "Scoring options"
 option	"match-score"					m	"Match score"					short	typestr = "SHORT"	default = "2"	optional
-option	"mismatch-penalty"				i	"Mismatch penalty"				short	typestr = "SHORT"	default = "-1"	optional
-option	"gap-start-penalty"				s	"Gap start penalty"				short	typestr = "SHORT"	default = "-10"	optional
+option	"mismatch-penalty"				i	"Mismatch penalty"				short	typestr = "SHORT"	default = "-3"	optional
+option	"gap-start-penalty"				s	"Gap start penalty"				short	typestr = "SHORT"	default = "-2"	optional
 option	"gap-penalty"					g	"Gap penalty"					short	typestr = "SHORT"	default = "-1"	optional
 
 section "Other options"
 option	"block-size"					b	"Aligned block size"			short	typestr = "SHORT"	default = "0"	optional
 option	"align-bytes"					-	"Treat the inputs as sequences of bytes rather than Unicode text"	flag	off
+option	"single-threaded"				-	"Use a single thread"												flag	off
 option	"print-debugging-information"	d	"Print debugging information"										flag	off
 option	"print-invocation"				-	"Print the command line invocation"									flag	off

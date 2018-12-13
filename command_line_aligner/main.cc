@@ -23,6 +23,9 @@
 namespace ta = text_align;
 
 
+typedef ta::smith_waterman::alignment_context <std::int32_t, std::uint32_t> alignment_context_type;
+
+
 template <typename t_range>
 std::size_t copy_distance(t_range range)
 {
@@ -83,34 +86,12 @@ struct string_view_from_input
 };
 
 
-int main(int argc, char **argv)
+void process_input(alignment_context_type &ctx, gengetopt_args_info const &args_info)
 {
-	//std::string lhs("ACTAAGGCTCTCTACCCCTCTCAGAGA");
-	//std::string rhs("ACTAAGGCTCCTAACCCCCTTTTCTCAGA");
-	
-	gengetopt_args_info args_info;
-	if (0 != cmdline_parser(argc, argv, &args_info))
-		exit(EXIT_FAILURE);
-	
-	std::ios_base::sync_with_stdio(false);	// Don't use C style IO after calling cmdline_parser.
-	std::cin.tie(nullptr);					// We don't require any input from the user.
-	
-	if (args_info.print_invocation_flag)
-	{
-		std::cerr << "Invocation:";
-		for (int i(0); i < argc; ++i)
-			std::cerr << ' ' << argv[i];
-		std::cerr << '\n';
-	}
-	
 	auto const lhs_input(std::make_tuple(args_info.lhs_arg, args_info.lhs_file_arg));
 	auto const rhs_input(std::make_tuple(args_info.rhs_arg, args_info.rhs_file_arg));
 	ta::map_on_stack_fn <string_view_from_input>(
-		[&args_info](std::string_view const &lhsv, std::string_view const &rhsv) {
-			
-			typedef ta::smith_waterman::alignment_context <std::int32_t, std::uint16_t> alignment_context_type;
-			
-			alignment_context_type ctx(1);
+		[&ctx, &args_info](std::string_view const &lhsv, std::string_view const &rhsv) {
 			auto &aligner(ctx.aligner());
 			
 			auto const match_score(args_info.match_score_arg);
@@ -119,12 +100,6 @@ int main(int argc, char **argv)
 			auto const gap_penalty(args_info.gap_penalty_arg);
 			auto const block_size(args_info.block_size_arg);
 			bool const print_debugging_information(args_info.print_debugging_information_flag);
-			
-			if (block_size < 0)
-			{
-				std::cerr << "Block size needs to be non-negative." << std::endl;
-				exit(EXIT_FAILURE);
-			}
 			
 			aligner.set_segment_length(block_size);
 			aligner.set_identity_score(match_score);
@@ -157,8 +132,47 @@ int main(int argc, char **argv)
 		},
 		lhs_input, rhs_input
 	);
+}
+
+
+int main(int argc, char **argv)
+{
+	//std::string lhs("ACTAAGGCTCTCTACCCCTCTCAGAGA");
+	//std::string rhs("ACTAAGGCTCCTAACCCCCTTTTCTCAGA");
+	
+	gengetopt_args_info args_info;
+	if (0 != cmdline_parser(argc, argv, &args_info))
+		exit(EXIT_FAILURE);
+	
+	std::ios_base::sync_with_stdio(false);	// Don't use C style IO after calling cmdline_parser.
+	std::cin.tie(nullptr);					// We don't require any input from the user.
+	
+	if (args_info.print_invocation_flag)
+	{
+		std::cerr << "Invocation:";
+		for (int i(0); i < argc; ++i)
+			std::cerr << ' ' << argv[i];
+		std::cerr << '\n';
+	}
+	
+	if (args_info.block_size_arg < 0)
+	{
+		std::cerr << "Block size needs to be non-negative." << std::endl;
+		exit(EXIT_FAILURE);
+	}
+	
+	if (args_info.single_threaded_flag)
+	{
+		alignment_context_type ctx(1);
+		process_input(ctx, args_info);
+	}
+	else
+	{
+		alignment_context_type ctx;
+		process_input(ctx, args_info);
+	}
 	
 	cmdline_parser_free(&args_info);
-
+	
 	return 0;
 }
