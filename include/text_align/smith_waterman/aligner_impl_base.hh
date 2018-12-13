@@ -15,12 +15,12 @@ namespace text_align { namespace smith_waterman { namespace detail {
 	class aligner_impl_base
 	{
 	protected:
-		typedef typename t_owner::context_type			context_type;
-		typedef typename t_owner::score_type			score_type;
-		typedef typename t_owner::arrow_type			arrow_type;
-		typedef typename t_owner::gap_score_gt_type		gap_score_gt_type;
-		typedef typename t_owner::score_vector			score_vector;
-		typedef typename t_owner::score_matrix			score_matrix;
+		typedef typename t_owner::context_type				context_type;
+		typedef typename t_owner::score_type				score_type;
+		typedef typename t_owner::arrow_type				arrow_type;
+		typedef typename t_owner::gap_start_position_type	gap_start_position_type;
+		typedef typename t_owner::score_vector				score_vector;
+		typedef typename t_owner::score_matrix				score_matrix;
 
 	protected:
 		// Pointers from t_owner.
@@ -69,7 +69,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		std::size_t &steps
 	) const
 	{
-		gap_score_gt_type gsgt{};
+		gap_start_position_type gsp{};
 		while (true)
 		{
 			++steps;
@@ -77,8 +77,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				return false;
 			
 			--i;
-			gsgt = static_cast <gap_score_gt_type>(m_data->gap_score_gt.load(j, i));
-			if (0 != (gap_score_gt_type::GSGT_LEFT & gsgt))
+			gsp = static_cast <gap_start_position_type>(m_data->gap_start_positions.load(j, i));
+			if (0 != (gap_start_position_type::GSP_RIGHT & gsp))
 				return true;
 		}
 	}
@@ -91,7 +91,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		std::size_t &steps
 	) const
 	{
-		gap_score_gt_type gsgt{};
+		gap_start_position_type gsp{};
 		while (true)
 		{
 			++steps;
@@ -99,8 +99,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				return false;
 			
 			--j;
-			gsgt = static_cast <gap_score_gt_type>(m_data->gap_score_gt.load(j, i));
-			if (0 != (gap_score_gt_type::GSGT_UP & gsgt))
+			gsp = static_cast <gap_start_position_type>(m_data->gap_start_positions.load(j, i));
+			if (0 != (gap_start_position_type::GSP_DOWN & gsp))
 				return true;
 		}
 	}

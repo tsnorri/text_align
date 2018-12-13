@@ -27,13 +27,13 @@ namespace text_align { namespace smith_waterman {
 			ARROW_MASK		= 0x3
 		};
 		
-		enum gap_score_gt_type : std::uint8_t
+		enum gap_start_position_type : std::uint8_t
 		{
-			GSGT_NONE		= 0x0,
-			GSGT_LEFT		= 0x1,
-			GSGT_UP			= 0x2,
-			GSGT_BOTH		= 0x3,
-			GSGT_MASK		= 0x3
+			GSP_NONE		= 0x0,
+			GSP_RIGHT		= 0x1,
+			GSP_DOWN		= 0x2,
+			GSP_BOTH		= 0x3,
+			GSP_MASK		= 0x3
 		};
 	};
 }}

@@ -17,11 +17,11 @@ namespace text_align { namespace smith_waterman { namespace detail {
 	{
 	protected:
 		typedef aligner_impl_base <t_owner>	superclass;
-		typedef typename superclass::score_type				score_type;
-		typedef typename superclass::gap_score_gt_type		gap_score_gt_type;
-		typedef typename superclass::arrow_type				arrow_type;
-		typedef typename superclass::score_vector			score_vector;
-		typedef typename superclass::score_matrix			score_matrix;
+		typedef typename superclass::score_type					score_type;
+		typedef typename superclass::gap_start_position_type	gap_start_position_type;
+		typedef typename superclass::arrow_type					arrow_type;
+		typedef typename superclass::score_vector				score_vector;
+		typedef typename superclass::score_matrix				score_matrix;
 
 		enum find_gap_type : std::uint8_t
 		{
@@ -56,7 +56,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			score_type gap_score_lhs{};
 			score_type gap_score_rhs{};
 			std::uint8_t max_idx{};
-			gap_score_gt_type is_gap_score_gt{};
+			gap_start_position_type did_start_gap{};
 			
 			score_result() = default;
 			score_result(score_type score_): score(score_) {}
@@ -127,8 +127,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		// Calculate the score for (j + 1, i + 1).
 		auto const identity_score(this->m_parameters->identity_score);
 		auto const mismatch_penalty(this->m_parameters->mismatch_penalty);
-		auto const gap_start_penalty(this->m_parameters->gap_start_penalty);
 		auto const gap_penalty(this->m_parameters->gap_penalty);
+		auto const gap_start_penalty(this->m_parameters->gap_start_penalty);
 		
 		// Update the existing gap score s.t. the gap would continue here.
 		auto const gap_score_lhs(this->m_data->gap_scores_lhs[1 + j] + gap_penalty);
@@ -154,16 +154,16 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		auto const gap_scores(make_array <score_type>(s1, s2, s3));
 		auto const max_gs_idx(argmax_element(gap_scores.begin(), gap_scores.end()));
 		
-		auto const is_gap_score_gt_values(make_array <gap_score_gt_type>(
-			gap_score_gt_type::GSGT_BOTH,
-			gap_score_gt_type::GSGT_UP,
-			gap_score_gt_type::GSGT_LEFT
+		auto const did_start_gap_values(make_array <gap_start_position_type>(
+			gap_start_position_type::GSP_BOTH,
+			gap_start_position_type::GSP_DOWN,
+			gap_start_position_type::GSP_RIGHT
 		));
 		
 		if (s2 == s3)
-			result.is_gap_score_gt = gap_score_gt_type::GSGT_BOTH;
+			result.did_start_gap = gap_start_position_type::GSP_BOTH;
 		else
-			result.is_gap_score_gt = is_gap_score_gt_values[max_gs_idx];
+			result.did_start_gap = did_start_gap_values[max_gs_idx];
 	}
 	
 	
@@ -209,7 +209,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			std::copy(it + lhs_idx, it + lhs_limit, src_buffer_ptr->begin() + lhs_idx);
 		}
 		
-		// Fill the part of lhs max scores.
+		// Fill the part of lhs gap scores.
 		{
 			auto const column(this->m_lhs->gap_score_samples.column(rhs_block_idx));
 			auto const it(column.begin());
@@ -263,7 +263,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 					auto const y(1 + j - lhs_idx);
 					auto const x(1 + i - rhs_idx);
 					do_and_assert_eq(this->m_data->traceback(y, x).fetch_or(result.max_idx), 0);
-					do_and_assert_eq(this->m_data->gap_score_gt(y, x).fetch_or(result.is_gap_score_gt), 0);
+					do_and_assert_eq(this->m_data->gap_start_positions(y, x).fetch_or(result.did_start_gap), 0);
 				}
 				
 				++lhs_it_2;
@@ -280,8 +280,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				
 				this->m_rhs->score_samples(1 + i, 1 + lhs_block_idx)		= result.score;									// Horizontal
 				this->m_rhs->gap_score_samples(1 + i, 1 + lhs_block_idx)	= result.gap_score_rhs;							// Horizontal
-				do_and_assert_eq(this->m_rhs->gap_score_gt(1 + i, 1 + lhs_block_idx).fetch_or(result.is_gap_score_gt), 0);	// Horizontal
-				do_and_assert_eq(this->m_rhs->initial_traceback(1 + i, 1 + lhs_block_idx).fetch_or(result.max_idx), 0);		// Horizontal, values same as arrow_type::*
+				do_and_assert_eq(this->m_rhs->traceback_samples(1 + i, 1 + lhs_block_idx).fetch_or(result.max_idx), 0);		// Horizontal, values same as arrow_type::*
+				do_and_assert_eq(this->m_rhs->gap_start_position_samples(1 + i, 1 + lhs_block_idx).fetch_or(result.did_start_gap), 0);	// Horizontal
 			}
 			
 			// Copy to output_score_buffer if needed. For these columns, the value of the final row is relevant (hence lhs_limit, not -1).
@@ -317,8 +317,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				
 				this->m_lhs->score_samples(1 + j, 1 + rhs_block_idx)		= result.score;									// Vertical
 				this->m_lhs->gap_score_samples(1 + j, 1 + rhs_block_idx)	= result.gap_score_lhs;							// Vertical
-				do_and_assert_eq(this->m_lhs->gap_score_gt(1 + j, 1 + rhs_block_idx).fetch_or(result.is_gap_score_gt), 0);	// Vertical
-				do_and_assert_eq(this->m_lhs->initial_traceback(1 + j, 1 + rhs_block_idx).fetch_or(result.max_idx), 0);		// Vertical, values same as arrow_type::*
+				do_and_assert_eq(this->m_lhs->traceback_samples(1 + j, 1 + rhs_block_idx).fetch_or(result.max_idx), 0);		// Vertical, values same as arrow_type::*
+				do_and_assert_eq(this->m_lhs->gap_start_position_samples(1 + j, 1 + rhs_block_idx).fetch_or(result.did_start_gap), 0);	// Vertical
 				
 				++lhs_it_2;
 			}
@@ -344,7 +344,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		auto const print_debugging_information(this->m_owner->prints_debugging_information());
 		
 		auto &traceback(this->m_data->traceback);
-		auto &gap_score_gt(this->m_data->gap_score_gt);
+		auto &gap_start_positions(this->m_data->gap_start_positions);
 		
 		std::size_t lhs_block_idx(this->m_parameters->lhs_segments - 1);
 		std::size_t rhs_block_idx(this->m_parameters->rhs_segments - 1);
@@ -373,26 +373,26 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		{
 			// Initialize the block to calculate the traceback.
 			std::fill(traceback.word_begin(), traceback.word_end(), 0);
-			std::fill(gap_score_gt.word_begin(), gap_score_gt.word_end(), 0);
+			std::fill(gap_start_positions.word_begin(), gap_start_positions.word_end(), 0);
 			
 			// Fill the first rows and columns of the matrices used in traceback.
-			auto const lhs_first(seg_len * lhs_block_idx);	// FIXME: minus one?
-			auto const rhs_first(seg_len * rhs_block_idx);	// FIXME: minus one?
+			auto const lhs_first(seg_len * lhs_block_idx);
+			auto const rhs_first(seg_len * rhs_block_idx);
 			{
 				auto const lhs_limit(min(1 + lhs_len, seg_len * (1 + lhs_block_idx)));
 				auto const rhs_limit(min(1 + rhs_len, seg_len * (1 + rhs_block_idx)));
 			
 				matrices::copy_to_word_aligned(
-					this->m_lhs->initial_traceback.column(rhs_block_idx, lhs_first, lhs_limit),
+					this->m_lhs->traceback_samples.column(rhs_block_idx, lhs_first, lhs_limit),
 					traceback.column(0)
 				);
 				matrices::copy_to_word_aligned(
-					this->m_lhs->gap_score_gt.column(rhs_block_idx, lhs_first, lhs_limit),
-					gap_score_gt.column(0)
+					this->m_lhs->gap_start_position_samples.column(rhs_block_idx, lhs_first, lhs_limit),
+					gap_start_positions.column(0)
 				);
 				
-				matrices::transpose_column_to_row(this->m_rhs->initial_traceback.column(lhs_block_idx, rhs_first, rhs_limit), traceback.row(0));
-				matrices::transpose_column_to_row(this->m_rhs->gap_score_gt.column(lhs_block_idx, rhs_first, rhs_limit), this->m_data->gap_score_gt.row(0));
+				matrices::transpose_column_to_row(this->m_rhs->traceback_samples.column(lhs_block_idx, rhs_first, rhs_limit), traceback.row(0));
+				matrices::transpose_column_to_row(this->m_rhs->gap_start_position_samples.column(lhs_block_idx, rhs_first, rhs_limit), this->m_data->gap_start_positions.row(0));
 			}
 			
 			// The first row and column are now filled, run the filling algorithm.

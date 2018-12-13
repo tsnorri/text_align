@@ -40,8 +40,7 @@ namespace text_align { namespace smith_waterman {
 		typedef std::vector <score_type>				score_vector;
 		typedef matrix <score_type>						score_matrix;
 		typedef packed_matrix <2, word_type>			traceback_matrix;
-		typedef packed_matrix <2, word_type>			direction_matrix;
-		typedef packed_matrix <2, word_type>			gap_score_gt_matrix;
+		typedef packed_matrix <2, word_type>			gap_start_position_matrix;
 		typedef packed_matrix <1, word_type>			flag_matrix;
 
 		typedef detail::aligner_impl_base <aligner>		impl_base_type;
@@ -113,31 +112,8 @@ namespace text_align { namespace smith_waterman {
 		bit_vector &rhs_gaps() { return m_rhs.gaps; };
 		bit_vector const &lhs_gaps() const { return m_lhs.gaps; };
 		bit_vector const &rhs_gaps() const { return m_rhs.gaps; };
-		
-	protected:
-		void fill_gap_scores(typename score_matrix::slice_type &slice) const;
-		void fill_gap_scores(typename score_matrix::slice_type &&slice) const;
 	};
 	
-	
-	template <typename t_score, typename t_word, typename t_delegate>
-	void aligner <t_score, t_word, t_delegate>::fill_gap_scores(typename score_matrix::slice_type &slice) const
-	{
-		std::size_t idx(0);
-		for (auto &val : slice)
-		{
-			val = idx * m_parameters.gap_penalty;
-			++idx;
-		}
-	}
-	
-	
-	template <typename t_score, typename t_word, typename t_delegate>
-	void aligner <t_score, t_word, t_delegate>::fill_gap_scores(typename score_matrix::slice_type &&slice) const
-	{
-		fill_gap_scores(slice);
-	}
-
 	
 	// Align the given strings.
 	template <typename t_score, typename t_word, typename t_delegate>
@@ -158,10 +134,6 @@ namespace text_align { namespace smith_waterman {
 		std::size_t const rhs_len
 	)
 	{
-		// Clear the state, m_score and m_flags are reset below.
-		m_lhs.gaps.clear();
-		m_rhs.gaps.clear();
-		
 		m_parameters.lhs_length = lhs_len;
 		m_parameters.rhs_length = rhs_len;
 		
@@ -177,91 +149,26 @@ namespace text_align { namespace smith_waterman {
 		auto const segments_along_y(std::ceil(1.0 * (1 + m_parameters.lhs_length) / m_parameters.segment_length)); // Segment count along Y axis.
 		auto const segments_along_x(std::ceil(1.0 * (1 + m_parameters.rhs_length) / m_parameters.segment_length)); // Segment count along X axis.
 		
-		// Initialize the flags.
-		{
-			matrices::initialize_atomic(m_data.flags, segments_along_y, segments_along_x);
-			
-			// Set the value of each flag.
-			std::fill(m_data.flags.word_begin(), m_data.flags.word_end(), 0);
-			
-			// Set the first row and column to one so that the blocks to the right and below the initial
-			// block may be filled.
-			auto column(m_data.flags.column(0));
-			auto row(m_data.flags.row(0));
-			std::for_each(column.begin(), column.end(),	[](auto ref){ ref.fetch_or(1); });	// ref will be a reference proxy.
-			std::for_each(row.begin(), row.end(),		[](auto ref){ ref.fetch_or(1); });
-		}
-		
-		// Reserve memory for the score samples and the scores.
-		m_lhs.score_samples.resize(1 + lhs_len, 1 + segments_along_x);		// Vertical.
-		m_rhs.score_samples.resize(1 + rhs_len, 1 + segments_along_y);		// Horizontal.
-		m_lhs.gap_score_samples.resize(1 + lhs_len, 1 + segments_along_x);	// Vertical.
-		m_rhs.gap_score_samples.resize(1 + rhs_len, 1 + segments_along_y);	// Horizontal.
-		
-		std::fill(m_lhs.score_samples.begin(), m_lhs.score_samples.end(), 0);
-		std::fill(m_rhs.score_samples.begin(), m_rhs.score_samples.end(), 0);
-		std::fill(m_lhs.gap_score_samples.begin(), m_lhs.gap_score_samples.end(), 0);
-		std::fill(m_rhs.gap_score_samples.begin(), m_rhs.gap_score_samples.end(), 0);
-		
-		// Fill the first vectors with gap scores.
-		fill_gap_scores(m_lhs.score_samples.column(0));
-		fill_gap_scores(m_rhs.score_samples.column(0));
-		fill_gap_score_samples(m_lhs.gap_score_samples.column(0));
-		fill_gap_score_samples(m_rhs_gap_score_samples.column(0));
-		
-		resize_and_zero(m_data.score_buffer_1, 1 + lhs_len);				// Vertical.
-		resize_and_zero(m_data.score_buffer_2, 1 + lhs_len);				// Vertical.
-		resize_and_zero(m_data.gap_scores_lhs, 1 + lhs_len);				// Vertical.
-		
-		{
-			matrices::initialize_atomic(m_lhs.gap_score_gt, 1 + lhs_len, 1 + segments_along_x);	// Vertical
-			matrices::initialize_atomic(m_rhs.gap_score_gt, 1 + rhs_len, 1 + segments_along_y);	// Horizontal
-			std::fill(m_lhs.gap_score_gt.word_begin(), m_lhs.gap_score_gt.word_end(), 0);
-			std::fill(m_rhs.gap_score_gt.word_begin(), m_rhs.gap_score_gt.word_end(), 0);
-			
-			// Fill the first vectors with arrows.
-			auto column(m_lhs.gap_score_gt.column(0));
-			auto row(m_rhs.gap_score_gt.column(0));
-			matrices::fill_column_with_bit_pattern <2>(column, gap_score_gt_type::GSGT_LEFT);
-			matrices::fill_column_with_bit_pattern <2>(row, gap_score_gt_type::GSGT_UP);
-			// Add GSGT_BOTH to the corner, make sure that it does not change the previous value.
-			assert(gap_score_gt_type::GSGT_BOTH == (gap_score_gt_type::GSGT_BOTH | (column[0] & gap_score_gt_type::GSGT_MASK)));
-			assert(gap_score_gt_type::GSGT_BOTH == (gap_score_gt_type::GSGT_BOTH | (row[0] & gap_score_gt_type::GSGT_MASK)));
-			column[0].fetch_or(gap_score_gt_type::GSGT_BOTH);
-			row[0].fetch_or(gap_score_gt_type::GSGT_BOTH);
-		}
-		
-		// Reserve memory for the tracebacks.
-		{
-			// Use two bits for each traceback arrow.
-			matrices::initialize_atomic(m_lhs.initial_traceback, 1 + lhs_len, 1 + segments_along_x);	// Vertical.
-			matrices::initialize_atomic(m_rhs.initial_traceback, 1 + rhs_len, 1 + segments_along_y);	// Horizontal.
-			std::fill(m_lhs.initial_traceback.word_begin(), m_lhs.initial_traceback.word_end(), 0);
-			std::fill(m_rhs.initial_traceback.word_begin(), m_rhs.initial_traceback.word_end(), 0);
-			
-			// Fill the first vectors with arrows.
-			auto column(m_lhs.initial_traceback.column(0));
-			auto row(m_rhs.initial_traceback.column(0));
-			matrices::fill_column_with_bit_pattern <2>(column, arrow_type::ARROW_UP);
-			matrices::fill_column_with_bit_pattern <2>(row, arrow_type::ARROW_LEFT);
-			// Add ARROW_FINISH to the corner, make sure that it does not change the previous value.
-			assert(arrow_type::ARROW_FINISH == (arrow_type::ARROW_FINISH | (column[0] & arrow_type::ARROW_MASK)));
-			assert(arrow_type::ARROW_FINISH == (arrow_type::ARROW_FINISH | (row[0] & arrow_type::ARROW_MASK)));
-			column[0].fetch_or(arrow_type::ARROW_FINISH);
-			row[0].fetch_or(arrow_type::ARROW_FINISH);
-			
-			// Again, two bits for each arrow.
-			matrices::initialize_atomic(m_data.traceback, m_parameters.segment_length, m_parameters.segment_length);
-			std::fill(m_data.traceback.word_begin(), m_data.traceback.word_end(), 0);
-		}
-		
-		{
-			matrices::initialize_atomic(m_data.gap_score_gt, m_parameters.segment_length, m_parameters.segment_length);
-			std::fill(m_data.gap_score_gt.word_begin(), m_data.gap_score_gt.word_end(), 0);
-		}
-		
 		m_parameters.lhs_segments = segments_along_y;
 		m_parameters.rhs_segments = segments_along_x;
+		
+		m_lhs.init(
+			lhs_len,
+			segments_along_x,
+			arrow_type::ARROW_UP,
+			gap_start_position_type::GSP_RIGHT,
+			m_parameters.gap_penalty,
+			m_parameters.gap_start_penalty
+		);
+		m_rhs.init(
+			rhs_len,
+			segments_along_y,
+			arrow_type::ARROW_LEFT,
+			gap_start_position_type::GSP_DOWN,
+			m_parameters.gap_penalty,
+			m_parameters.gap_start_penalty
+		);
+		m_data.init(lhs_len, m_parameters.segment_length, segments_along_y, segments_along_x);
 		
 		// Instantiate the implementation.
 		auto impl_ptr(
