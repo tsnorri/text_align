@@ -720,18 +720,6 @@ BOOST_AUTO_TEST_CASE(test_aligner_1)
 }
 
 
-BOOST_AUTO_TEST_CASE(test_aligner_2_16)
-{
-	typedef alignment_context_type <std::uint16_t> alignment_context;
-	typedef typename alignment_context::aligner_type::bit_vector bit_vector;
-
-	bit_vector const lhs(10, 0x0);
-	bit_vector const rhs(10, 0x42);
-	alignment_context ctx;
-	run_aligner(ctx, "xaasdxaasd", "xasdxasd", lhs, rhs, 4, 8, 2, -2, -2, -1);
-}
-
-
 BOOST_AUTO_TEST_CASE(test_aligner_2_32)
 {
 	typedef alignment_context_type <std::uint32_t> alignment_context;
@@ -740,5 +728,29 @@ BOOST_AUTO_TEST_CASE(test_aligner_2_32)
 	bit_vector const lhs(10, 0x0);
 	bit_vector const rhs(10, 0x42);
 	alignment_context ctx;
-	run_aligner(ctx, "xaasdxaasd", "xasdxasd", lhs, rhs, 8, 32, 2, -2, -2, -1);
+	run_aligner(ctx, "xaasdxaasd", "xasdxasd", lhs, rhs, 8, 16, 2, -2, -2, -1);
+}
+
+
+BOOST_AUTO_TEST_CASE(test_aligner_2_16)
+{
+	typedef alignment_context_type <std::uint16_t> alignment_context;
+	typedef typename alignment_context::aligner_type::bit_vector bit_vector;
+	
+	bit_vector const lhs(10, 0x0);
+	bit_vector const rhs(10, 0x42);
+	alignment_context ctx;
+	run_aligner(ctx, "xaasdxaasd", "xasdxasd", lhs, rhs, 8, 8, 2, -2, -2, -1);
+}
+
+
+BOOST_AUTO_TEST_CASE(test_aligner_2_8)
+{
+	typedef alignment_context_type <std::uint16_t> alignment_context;
+	typedef typename alignment_context::aligner_type::bit_vector bit_vector;
+	
+	bit_vector const lhs(10, 0x0);
+	bit_vector const rhs(10, 0x42);
+	alignment_context ctx;
+	run_aligner(ctx, "xaasdxaasd", "xasdxasd", lhs, rhs, 8, 4, 2, -2, -2, -1);
 }
