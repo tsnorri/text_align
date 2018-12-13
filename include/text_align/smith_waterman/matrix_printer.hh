@@ -8,6 +8,7 @@
 
 #include <boost/iostreams/device/back_inserter.hpp>
 #include <boost/iostreams/stream.hpp>
+#include <boost/locale/utf.hpp>
 #include <iterator>
 #include <text_align/smith_waterman/aligner_base.hh>
 
