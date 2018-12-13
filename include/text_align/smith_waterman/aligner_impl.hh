@@ -205,18 +205,23 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		{
 			auto const column(this->m_lhs->score_samples.column(rhs_block_idx));
 			auto const it(column.begin());
-			std::copy(it + lhs_idx, it + lhs_limit, src_buffer_ptr->begin() + lhs_idx);
+			std::copy(
+				it + lhs_idx,
+				it + lhs_limit,
+				src_buffer_ptr->begin() + lhs_idx
+			);
 		}
 		
-		// Fill the part of lhs gap scores.
+		// Fill the part of lhs gap scores. The first row is not needed here but the final row is.
 		{
 			auto const column(this->m_lhs->gap_score_samples.column(rhs_block_idx));
 			auto const it(column.begin());
-			std::copy(it + lhs_idx, it + lhs_limit, this->m_data->gap_scores_lhs.begin() + lhs_idx);
+			std::copy(
+				it + lhs_idx + 1,
+				it + lhs_limit + should_calculate_final_row,
+				this->m_data->gap_scores_lhs.begin() + lhs_idx + 1
+			);
 		}
-		
-		// For filling the topmost value of the dst buffer (using the sampled row).
-		auto const &topmost_row(this->m_rhs->score_samples.column(rhs_block_idx)); // Horizontal.
 		
 		// Find the correct text position.
 		auto lhs_it(m_lhs_text->begin());
@@ -231,8 +236,9 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		
 		// Fill the block. Initialize the result with the final value of the first column in case
 		// it is the only column to fill.
+		auto const &topmost_row(this->m_rhs->score_samples.column(lhs_block_idx));			// Horizontal.
+		auto const &gap_scores_rhs(this->m_rhs->gap_score_samples.column(lhs_block_idx));	// Horizontal.
 		score_result result((*src_buffer_ptr)[lhs_limit - 1]);
-		auto const &gap_scores_rhs(this->m_rhs->gap_score_samples.column(lhs_block_idx));
 		for (std::size_t i(rhs_idx); i < rhs_limit - 1; ++i) // Column
 		{
 			assert(rhs_it != m_rhs_text->end());
