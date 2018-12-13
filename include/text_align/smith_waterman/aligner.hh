@@ -30,6 +30,9 @@ namespace text_align { namespace smith_waterman {
 		friend detail::aligner_data <aligner>;
 		friend detail::aligner_sample <aligner>;
 		
+	public:
+		typedef aligner_base::bit_vector				bit_vector;
+
 	protected:
 		typedef aligner_base::arrow_type arrow_type;
 		

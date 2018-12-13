@@ -15,9 +15,8 @@ namespace text_align { namespace smith_waterman {
 	template <typename t_score, typename t_word, template <typename, typename, typename> class t_aligner>
 	class alignment_context_tpl
 	{
-	protected:
+	public:
 		typedef t_aligner <t_score, t_word, alignment_context_tpl>	aligner_type;
-		
 		friend aligner_type;
 		
 	protected:

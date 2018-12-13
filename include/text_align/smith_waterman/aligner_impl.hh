@@ -138,32 +138,31 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		auto const s2(gap_score_lhs);	// Lhs string
 		auto const s3(gap_score_rhs);	// Rhs string
 		
-		result.gap_score_lhs = s2;
-		result.gap_score_rhs = s3;
-		
 		// Take gap_start_penalty into account when choosing the maximum element and saving the score.
 		// When caching the value, don't add gap_start_penalty.
 		auto const scores(make_array <score_type>(s1, gap_start_penalty + s2, gap_start_penalty + s3));
 		result.max_idx = argmax_element(scores.begin(), scores.end());
-		
-		// Score
 		assert(result.max_idx < scores.size());
 		result.score = scores[result.max_idx];
 		
-		// Gap score
-		auto const gap_scores(make_array <score_type>(s1, s2, s3));
-		auto const max_gs_idx(argmax_element(gap_scores.begin(), gap_scores.end()));
+		// Check if the target cell should be used as a gap start position.
+		result.did_start_gap = gap_start_position_type::GSP_NONE;
 		
-		auto const did_start_gap_values(make_array <gap_start_position_type>(
-			gap_start_position_type::GSP_BOTH,
-			gap_start_position_type::GSP_DOWN,
-			gap_start_position_type::GSP_RIGHT
-		));
-		
-		if (s2 == s3)
-			result.did_start_gap = gap_start_position_type::GSP_BOTH;
+		if (s1 < s2)
+			result.gap_score_lhs = s2 + gap_penalty;
 		else
-			result.did_start_gap = did_start_gap_values[max_gs_idx];
+		{
+			result.gap_score_lhs = s1 + gap_penalty;
+			result.did_start_gap |= gap_start_position_type::GSP_RIGHT;
+		}
+		
+		if (s1 < s3)
+			result.gap_score_rhs = s3 + gap_penalty;
+		else
+		{
+			result.gap_score_rhs = s1 + gap_penalty;
+			result.did_start_gap |= gap_start_position_type::GSP_DOWN;
+		}
 	}
 	
 	

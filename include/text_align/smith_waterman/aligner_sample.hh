@@ -104,7 +104,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		fill_gap_scores(score_samples.column(0), gap_penalty, gap_start_penalty);
 		fill_gap_scores(gap_score_samples.column(0), gap_penalty, gap_start_penalty);
 		
-		// Initialize the direction samples.
+		// Initialize the traceback samples.
 		{
 			matrices::initialize_atomic(traceback_samples, 1 + input_length, 1 + segments_along_axis);
 			std::fill(traceback_samples.word_begin(), traceback_samples.word_end(), 0);

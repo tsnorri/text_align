@@ -36,6 +36,16 @@ namespace text_align { namespace smith_waterman {
 			GSP_MASK		= 0x3
 		};
 	};
+	
+	inline aligner_base::gap_start_position_type operator|(aligner_base::gap_start_position_type lhs, aligner_base::gap_start_position_type rhs)
+	{
+		return static_cast <aligner_base::gap_start_position_type>(to_underlying(lhs) | to_underlying(rhs));
+	}
+	
+	inline aligner_base::gap_start_position_type &operator|=(aligner_base::gap_start_position_type &lhs, aligner_base::gap_start_position_type rhs)
+	{
+		return lhs = (lhs | rhs);
+	}
 }}
 
 #endif
