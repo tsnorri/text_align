@@ -110,7 +110,7 @@ int main(int argc, char **argv)
 			
 			typedef ta::smith_waterman::alignment_context <std::int32_t, std::uint16_t> alignment_context_type;
 			
-			alignment_context_type ctx;
+			alignment_context_type ctx(1);
 			auto &aligner(ctx.aligner());
 			
 			auto const match_score(args_info.match_score_arg);

@@ -21,11 +21,18 @@ namespace text_align { namespace smith_waterman {
 		
 	protected:
 		aligner_type				m_aligner;
-		boost::asio::thread_pool	m_ctx{};
+		boost::asio::thread_pool	m_ctx;
 		
 	public:
 		alignment_context_tpl():
-			m_aligner(m_ctx, *this)
+			m_aligner(m_ctx, *this),
+			m_ctx()
+		{
+		}
+		
+		alignment_context_tpl(std::size_t const num_threads):
+			m_aligner(m_ctx, *this),
+			m_ctx(num_threads)
 		{
 		}
 		
