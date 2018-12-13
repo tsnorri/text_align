@@ -23,39 +23,36 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		typedef aligner_base::arrow_type		arrow_type;
 		
 	protected:
-		bit_vector	m_lhs_gaps{};
-		bit_vector	m_rhs_gaps{};
-		t_lhs_it	m_lhs_it{};
-		t_rhs_it	m_rhs_it{};
-		std::size_t	m_padding{};
-		std::size_t	m_lhs_offset{};
-		std::size_t	m_rhs_offset{};
-		std::size_t	m_rows{};
-		std::size_t	m_columns{};
-		std::size_t	m_path_x{};
-		std::size_t	m_path_y{};
-		std::size_t	m_gap_idx{};
+		packed_matrix <1, std::uint64_t>	m_path;
+		t_lhs_it							m_lhs_it{};
+		t_rhs_it							m_rhs_it{};
+		std::size_t							m_padding{};
+		std::size_t							m_lhs_offset{};
+		std::size_t							m_rhs_offset{};
+		std::size_t							m_rows{};
+		std::size_t							m_columns{};
+		std::size_t							m_j_start{};
+		std::size_t							m_i_start{};
 		
 	public:
 		matrix_printer() = default;
 		
 		matrix_printer(
+			std::size_t j_start,
+			std::size_t i_start,
 			std::size_t rows,
 			std::size_t columns,
-			bit_vector const &lhs_gaps,
-			bit_vector const &rhs_gaps,
 			t_lhs_it const &lhs_it,
 			t_rhs_it const &rhs_it
 		):
-			m_lhs_gaps(lhs_gaps),
-			m_rhs_gaps(rhs_gaps),
+			m_path(rows, columns),
 			m_lhs_it(lhs_it),
 			m_rhs_it(rhs_it),
 			m_rows(rows),
-			m_columns(columns)
+			m_columns(columns),
+			m_j_start(j_start),
+			m_i_start(i_start)
 		{
-			reverse_bitset(m_lhs_gaps);
-			reverse_bitset(m_rhs_gaps);
 		}
 		
 		void set_lhs_offset(std::size_t off) { m_lhs_offset = off; }
@@ -63,6 +60,9 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		void set_padding(std::size_t padding) { m_padding = padding; }
 
 		void print_header();
+		
+		template <typename t_matrix>
+		void prepare(t_matrix const &tb);
 		
 		template <typename t_matrix>
 		void print_traceback(t_matrix const &tb);
@@ -100,39 +100,51 @@ namespace text_align { namespace smith_waterman { namespace detail {
 	template <typename t_lhs_it, typename t_rhs_it>
 	bool matrix_printer <t_lhs_it, t_rhs_it>::check_on_path(std::size_t const j, std::size_t const i)
 	{
-		bool on_path(false);
-		if (j == m_path_x && i == m_path_y)
+		return m_path(j, i);
+	}
+	
+	
+	template <typename t_lhs_it, typename t_rhs_it>
+	template <typename t_matrix>
+	void matrix_printer <t_lhs_it, t_rhs_it>::prepare(t_matrix const &tb)
+	{
+		std::size_t j(m_j_start);
+		std::size_t i(m_i_start);
+		
+		while (true)
 		{
-			on_path = true;
-			std::uint8_t path_arrow_bits(0);
-			path_arrow_bits |= m_lhs_gaps[m_gap_idx] << 1;
-			path_arrow_bits |= m_rhs_gaps[m_gap_idx];
-			arrow_type const path_arrow(static_cast <arrow_type>(path_arrow_bits));
-
-			switch (path_arrow)
+			m_path(j, i).fetch_or(0x1);
+			auto const dir(static_cast <arrow_type>(tb(j, i)));
+			switch (dir)
 			{
 				case arrow_type::ARROW_DIAGONAL:
-					++m_path_x;
-					++m_path_y;
-					break;
-					
-				case arrow_type::ARROW_UP:
-					++m_path_y;
+					if (! (j && i))
+						goto exit_loop;
+					--j;
+					--i;
 					break;
 					
 				case arrow_type::ARROW_LEFT:
-					++m_path_x;
+					if (!i)
+						goto exit_loop;
+					--i;
 					break;
+					
+				case arrow_type::ARROW_UP:
+					if (!j)
+						goto exit_loop;
+					--j;
+					break;
+					
+				case arrow_type::ARROW_FINISH:
+					goto exit_loop;
 					
 				default:
 					fail_assertion();
-					break;
 			}
-			
-			++m_gap_idx;
 		}
-		
-		return on_path;
+	exit_loop:
+		;
 	}
 	
 	
@@ -144,10 +156,6 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		typedef std::vector <char> buffer_type;
 		typedef io::stream <io::back_insert_device <buffer_type>> buffer_stream;
 
-		m_gap_idx = 0;
-		m_path_x = 0;
-		m_path_y = 0;
-		
 		print_header();
 		auto lhs_it(m_lhs_it); // Copy.
 		std::advance(lhs_it, m_lhs_offset);
@@ -215,10 +223,6 @@ namespace text_align { namespace smith_waterman { namespace detail {
 	template <typename t_matrix>
 	void matrix_printer <t_lhs_it, t_rhs_it>::print_traceback(t_matrix const &tb)
 	{
-		m_gap_idx = 0;
-		m_path_x = 0;
-		m_path_y = 0;
-		
 		print_header();
 		auto lhs_it(m_lhs_it); // Copy.
 		std::advance(lhs_it, m_lhs_offset);

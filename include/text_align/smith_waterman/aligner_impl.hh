@@ -196,7 +196,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		auto const rhs_limit(rhs_limits[should_calculate_final_column]);
 		assert(lhs_limit - lhs_idx <= segment_length);
 		assert(rhs_limit - rhs_idx <= segment_length);
-
+		
 		// Score buffers.
 		auto *src_buffer_ptr(&this->m_data->score_buffer_1);
 		auto *dst_buffer_ptr(&this->m_data->score_buffer_2);
@@ -358,8 +358,12 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		assert(rhs_idx <= rhs_len);
 		std::size_t j_limit(min(seg_len, 1 + lhs_len - lhs_idx)); // (Last) row
 		std::size_t i_limit(min(seg_len, 1 + rhs_len - rhs_idx)); // (Last) column
+		std::size_t next_i_limit(i_limit);
+		std::size_t next_j_limit(j_limit);
 		auto j(j_limit - 1);
 		auto i(i_limit - 1);
+		auto prev_j(j);
+		auto prev_i(i);
 		std::uint8_t mode(0);
 		
 		if (print_debugging_information)
@@ -463,6 +467,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 								assert(rhs_block_idx);
 								--rhs_block_idx;
 								i = seg_len - 1;
+								next_i_limit = seg_len;
 							}
 							else
 							{
@@ -474,6 +479,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 								assert(lhs_block_idx);
 								--lhs_block_idx;
 								j = seg_len - 1;
+								next_j_limit = seg_len;
 							}
 							else
 							{
@@ -501,6 +507,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 							assert(rhs_block_idx);
 							--rhs_block_idx;
 							i = seg_len - 1;
+							next_i_limit = seg_len;
 							mode = find_gap_type::LEFT;
 							goto continue_loop;
 						}
@@ -518,6 +525,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 							assert(lhs_block_idx);
 							--lhs_block_idx;
 							j = seg_len - 1;
+							next_j_limit = seg_len;
 							mode = find_gap_type::UP;
 							goto continue_loop;
 						}
@@ -537,39 +545,43 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			if (print_debugging_information)
 			{
 				matrix_printer printer(
+					prev_j,
+					prev_i,
 					j_limit,
 					i_limit,
-					this->m_lhs->gaps,
-					this->m_rhs->gaps,
 					m_lhs_text->begin(),
 					m_rhs_text->begin()
 				);
 				
 				printer.set_lhs_offset(lhs_first - 1);
 				printer.set_rhs_offset(rhs_first - 1);
+				printer.prepare(traceback);
 				printer.print_scores(score_buffer);
 				std::cerr << '\n';
 				printer.print_traceback(traceback);
 				std::cerr << '\n';
 			}
 			
-			i_limit = seg_len;
-			j_limit = seg_len;
+			j_limit = next_j_limit;
+			i_limit = next_i_limit;
+			prev_j = j;
+			prev_i = i;
 		}
 		
 	exit_loop:
 		if (print_debugging_information)
 		{
 			matrix_printer printer(
+				prev_j,
+				prev_i,
 				j_limit,
 				i_limit,
-				this->m_lhs->gaps,
-				this->m_rhs->gaps,
 				m_lhs_text->begin(),
 				m_rhs_text->begin()
 			);
 
 			printer.set_padding(1);
+			printer.prepare(traceback);
 			printer.print_scores(score_buffer);
 			std::cerr << '\n';
 			printer.print_traceback(traceback);
