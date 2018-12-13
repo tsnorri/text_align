@@ -6,6 +6,7 @@
 #ifndef TEXT_ALIGN_SMITH_WATERMAN_ALIGNER_IMPL_BASE_HH
 #define TEXT_ALIGN_SMITH_WATERMAN_ALIGNER_IMPL_BASE_HH
 
+#include <text_align/smith_waterman/aligner_parameters.hh>
 #include <text_align/smith_waterman/aligner_sample.hh>
 
 

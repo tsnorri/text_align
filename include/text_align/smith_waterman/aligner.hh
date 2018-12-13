@@ -13,7 +13,9 @@
 #include <memory>
 #include <text_align/matrix.hh>
 #include <text_align/smith_waterman/aligner_base.hh>
+#include <text_align/smith_waterman/aligner_data.hh>
 #include <text_align/smith_waterman/aligner_impl.hh>
+#include <text_align/smith_waterman/aligner_parameters.hh>
 #include <text_align/smith_waterman/aligner_sample.hh>
 
 
