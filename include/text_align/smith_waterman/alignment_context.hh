@@ -21,7 +21,7 @@ namespace text_align { namespace smith_waterman {
 		
 	protected:
 		aligner_type				m_aligner;
-		boost::asio::thread_pool	m_ctx;
+		boost::asio::io_context		m_ctx;
 		
 	public:
 		alignment_context_tpl():
@@ -39,13 +39,13 @@ namespace text_align { namespace smith_waterman {
 		aligner_type &aligner() { return m_aligner; }
 		aligner_type const &aligner() const { return m_aligner; }
 
-		boost::asio::thread_pool &execution_context() { return m_ctx; }
-		boost::asio::thread_pool const &execution_context() const { return m_ctx; }
+		boost::asio::io_context &execution_context() { return m_ctx; }
+		boost::asio::io_context const &execution_context() const { return m_ctx; }
 		
-		void run() { m_ctx.join(); }
+		void run() { m_ctx.run(); }
 		
 	protected:
-		void finish(aligner_type &aligner) { m_ctx.stop(); }
+		void finish(aligner_base &aligner) { m_ctx.stop(); }
 	};
 	
 	

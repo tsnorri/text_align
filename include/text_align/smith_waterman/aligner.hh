@@ -18,11 +18,15 @@
 #include <text_align/smith_waterman/aligner_parameters.hh>
 #include <text_align/smith_waterman/aligner_sample.hh>
 
+// FIXME: move to a compatibility header.
+#include <experimental/type_traits>
+namespace std { using ::std::experimental::is_detected_v; }
+
 
 namespace text_align { namespace smith_waterman {
 	
 	template <typename t_score, typename t_word, typename t_delegate>
-	class aligner : public aligner_base
+	class aligner final : public aligner_base
 	{
 		static_assert(std::is_integral_v <t_score>, "Expected t_score to be a signed integer type.");
 		static_assert(std::is_signed_v <t_score>, "Expected t_score to be a signed integer type.");
@@ -32,6 +36,8 @@ namespace text_align { namespace smith_waterman {
 		
 	public:
 		typedef aligner_base::bit_vector				bit_vector;
+		typedef t_delegate								delegate_type;
+		typedef boost::asio::io_context					context_type;
 
 	protected:
 		typedef aligner_base::arrow_type arrow_type;
@@ -49,9 +55,9 @@ namespace text_align { namespace smith_waterman {
 		typedef packed_matrix <1, word_type>			flag_matrix;
 
 		typedef detail::aligner_impl_base <aligner>		impl_base_type;
-		typedef boost::asio::thread_pool				context_type;
-		
 		friend impl_base_type;
+		
+		typedef typename impl_base_type::score_result	score_result;
 		
 	protected:
 		context_type									*m_ctx{nullptr};
@@ -66,17 +72,20 @@ namespace text_align { namespace smith_waterman {
 		score_type										m_alignment_score{0};
 		
 	protected:
-		void finish(score_type const final_score)
-		{
-			m_alignment_score = final_score;
-			m_aligner_impl.reset();
-			m_delegate->finish(*this);
-		}
+		// Delegate member functions.
+		template <typename t_class>
+		using did_calculate_score_t = std::integral_constant <
+			void (t_class::*)(aligner_base &, std::size_t, std::size_t, score_result const &, bool),
+			&t_class::did_calculate_score
+		>;
+		
+		inline void did_calculate_score(std::size_t const row, std::size_t const column, score_result const &result, bool const initial);
+		inline void finish(score_type const final_score);
 		
 	public:
 		aligner() = default;
 		
-		aligner(boost::asio::thread_pool &ctx, t_delegate &delegate):
+		aligner(context_type &ctx, t_delegate &delegate):
 			m_ctx(&ctx),
 			m_delegate(&delegate)
 		{
@@ -91,14 +100,14 @@ namespace text_align { namespace smith_waterman {
 		std::size_t lhs_size() const { return m_parameters.lhs_length; }
 		std::size_t rhs_size() const { return m_parameters.rhs_length; }
 		
-		boost::asio::thread_pool &execution_context() { return *m_ctx; }
+		context_type &execution_context() { return *m_ctx; }
 		
 		void set_identity_score(score_type const score) { m_parameters.identity_score = score; }
 		void set_mismatch_penalty(score_type const score) { m_parameters.mismatch_penalty = score; }
 		void set_gap_start_penalty(score_type const score) { m_parameters.gap_start_penalty = score; }
 		void set_gap_penalty(score_type const score) { m_parameters.gap_penalty = score; }
-		void set_segment_length(std::uint32_t const length) { m_parameters.segment_length = length; }
-		void set_prints_debugging_information(bool const should_print) { m_parameters.print_debugging_information = should_print; }
+		virtual void set_segment_length(std::uint32_t const length) { m_parameters.segment_length = length; }
+		virtual void set_prints_debugging_information(bool const should_print) { m_parameters.print_debugging_information = should_print; }
 		
 		template <typename t_lhs, typename t_rhs>
 		void align(t_lhs const &lhs, t_rhs const &rhs);
@@ -118,6 +127,24 @@ namespace text_align { namespace smith_waterman {
 		bit_vector const &lhs_gaps() const { return m_lhs.gaps; };
 		bit_vector const &rhs_gaps() const { return m_rhs.gaps; };
 	};
+	
+	
+	template <typename t_score, typename t_word, typename t_delegate>
+	void aligner <t_score, t_word, t_delegate>::did_calculate_score(std::size_t const row, std::size_t const column, score_result const &result, bool const initial)
+	{
+		// Call the delegate if it has a suitable member function.
+		if constexpr (std::is_detected_v <did_calculate_score_t, t_delegate>)
+			m_delegate->did_calculate_score(*this, row, column, result, initial);
+	}
+	
+	
+	template <typename t_score, typename t_word, typename t_delegate>
+	void aligner <t_score, t_word, t_delegate>::finish(score_type const final_score)
+	{
+		m_alignment_score = final_score;
+		m_aligner_impl.reset();
+		m_delegate->finish(*this);
+	}
 	
 	
 	// Align the given strings.

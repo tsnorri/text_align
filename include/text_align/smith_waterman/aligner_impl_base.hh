@@ -12,6 +12,20 @@
 
 namespace text_align { namespace smith_waterman { namespace detail {
 	
+	template <typename t_score>
+	struct score_result
+	{
+		t_score score{};
+		t_score gap_score_lhs{};
+		t_score gap_score_rhs{};
+		std::uint8_t max_idx{};
+		aligner_base::gap_start_position_type did_start_gap{};
+		
+		score_result() = default;
+		score_result(t_score score_): score(score_) {}
+	};
+	
+	
 	template <typename t_owner>
 	class aligner_impl_base
 	{
@@ -22,7 +36,10 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		typedef typename t_owner::gap_start_position_type	gap_start_position_type;
 		typedef typename t_owner::score_vector				score_vector;
 		typedef typename t_owner::score_matrix				score_matrix;
-
+		
+	public:
+		typedef score_result <score_type>					score_result;
+		
 	protected:
 		// Pointers from t_owner.
 		t_owner							*m_owner{};	// Not const b.c. finish() requires mutability.
@@ -58,9 +75,19 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			std::size_t &steps
 		) const;
 
-		void finish() { this->m_owner->finish(m_block_score); }
 		score_type block_score() const { return m_block_score; }
+
+	protected:
+		inline void did_calculate_score(std::size_t const j, std::size_t const i, score_result const &result, bool const initial);
+		inline void finish() { this->m_owner->finish(m_block_score); }
 	};
+	
+	
+	template <typename t_owner>
+	void aligner_impl_base <t_owner>::did_calculate_score(std::size_t const j, std::size_t const i, score_result const &result, bool const initial)
+	{
+		this->m_owner->did_calculate_score(j, i, result, initial);
+	}
 	
 	
 	template <typename t_owner>

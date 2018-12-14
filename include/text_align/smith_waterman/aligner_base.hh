@@ -35,6 +35,10 @@ namespace text_align { namespace smith_waterman {
 			GSP_BOTH		= 0x3,
 			GSP_MASK		= 0x3
 		};
+		
+		virtual ~aligner_base() {}
+		virtual void set_segment_length(std::uint32_t const length) = 0;
+		virtual void set_prints_debugging_information(bool const should_print) = 0;
 	};
 	
 	inline aligner_base::gap_start_position_type operator|(aligner_base::gap_start_position_type lhs, aligner_base::gap_start_position_type rhs)

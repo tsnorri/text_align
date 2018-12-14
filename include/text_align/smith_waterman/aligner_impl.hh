@@ -22,6 +22,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		typedef typename superclass::arrow_type					arrow_type;
 		typedef typename superclass::score_vector				score_vector;
 		typedef typename superclass::score_matrix				score_matrix;
+		typedef typename superclass::score_result				score_result;
 
 		enum find_gap_type : std::uint8_t
 		{
@@ -50,18 +51,6 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		void align_block(std::size_t const lhs_block_idx, std::size_t const rhs_block_idx);
 		
 	protected:
-		struct score_result
-		{
-			score_type score{};
-			score_type gap_score_lhs{};
-			score_type gap_score_rhs{};
-			std::uint8_t max_idx{};
-			gap_start_position_type did_start_gap{};
-			
-			score_result() = default;
-			score_result(score_type score_): score(score_) {}
-		};
-			
 		inline void copy_to_score_buffer(
 			score_vector const &src,
 			std::size_t const column_idx,
@@ -256,6 +245,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				auto const lhs_c(*lhs_it_2);
 				auto const prev_diag_score((*src_buffer_ptr)[j]);
 				calculate_score(prev_diag_score, lhs_c, rhs_c, j, i, gap_score_rhs, result);
+				this->did_calculate_score(1 + j, 1 + i, result, t_initial);
 				
 				// Store the values.
 				(*dst_buffer_ptr)[1 + j]			= result.score;
@@ -282,6 +272,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				auto const lhs_c(*lhs_it_2);
 				auto const prev_diag_score((*src_buffer_ptr)[lhs_limit - 1]);
 				calculate_score(prev_diag_score, lhs_c, rhs_c, lhs_limit - 1, i, gap_score_rhs, result);
+				this->did_calculate_score(lhs_limit, 1 + i, result, t_initial);
 				
 				this->m_rhs->score_samples(1 + i, 1 + lhs_block_idx)		= result.score;									// Horizontal
 				this->m_rhs->gap_score_samples(1 + i, 1 + lhs_block_idx)	= result.gap_score_rhs;							// Horizontal
@@ -319,6 +310,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				auto const lhs_c(*lhs_it_2);
 				auto const prev_diag_score((*src_buffer_ptr)[j]);
 				calculate_score(prev_diag_score, lhs_c, rhs_c, j, rhs_limit - 1, gap_score_rhs, result);
+				this->did_calculate_score(1 + j, rhs_limit, result, t_initial);
 				
 				this->m_lhs->score_samples(1 + j, 1 + rhs_block_idx)		= result.score;									// Vertical
 				this->m_lhs->gap_score_samples(1 + j, 1 + rhs_block_idx)	= result.gap_score_lhs;							// Vertical
@@ -329,7 +321,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			}
 		}
 		
-		if (t_initial)
+		if constexpr (t_initial)
 		{
 			// Update the score.
 			this->m_block_score = result.score;
