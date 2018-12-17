@@ -8,6 +8,7 @@
 
 #include <boost/range/combine.hpp>
 #include <cstdint>
+#include <text_align/algorithm.hh>
 #include <text_align/assert.hh>
 #include <text_align/json_serialize.hh>
 #include <vector>
@@ -77,7 +78,7 @@ namespace text_align {
 	public:
 		typedef std::unique_ptr <alignment_graph::node_base>	node_ptr;
 		typedef std::vector <node_ptr>							node_ptr_vector;
-		typedef std::vector <bool>								gap_vector;
+		typedef boost::dynamic_bitset <std::uint64_t>			gap_vector;
 		
 	protected:
 		node_ptr_vector	m_text_segments;
@@ -113,10 +114,11 @@ namespace text_align {
 		// append it to a graph node that represents a common segment.
 		// Otherwise, append the characters to a graph node that represents
 		// distinct segments.
-		for (auto const &zipped : boost::combine(lhs_gaps, rhs_gaps))
+		auto const length(lhs_gaps.size());
+		assert(length == rhs_gaps.size());
+		for (std::size_t i(0); i < length; ++i)
 		{
-			bool lhs_has_gap(false), rhs_has_gap(false);
-			boost::tie(lhs_has_gap, rhs_has_gap) = zipped;
+			bool lhs_has_gap(lhs_gaps[i]), rhs_has_gap(rhs_gaps[i]);
 			
 			always_assert(! (lhs_has_gap && rhs_has_gap));
 			if (! (lhs_has_gap || rhs_has_gap))
