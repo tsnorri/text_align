@@ -203,6 +203,9 @@ namespace text_align { namespace smith_waterman {
 		);
 		m_data.init(lhs_len, m_parameters.segment_length, segments_along_y, segments_along_x);
 		
+		m_lhs.copy_first_sample_values(m_rhs, m_parameters.segment_length, segments_along_x);
+		m_rhs.copy_first_sample_values(m_lhs, m_parameters.segment_length, segments_along_y);
+		
 		// Instantiate the implementation.
 		auto impl_ptr(
 			new detail::aligner_impl <aligner, t_lhs, t_rhs>(

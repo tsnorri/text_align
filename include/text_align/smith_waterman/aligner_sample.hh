@@ -38,6 +38,12 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			score_type const gap_start_penalty
 		);
 		
+		void copy_first_sample_values(
+			aligner_sample const &src,
+			std::size_t const segment_length,
+			std::size_t const segment_count
+		);
+		
 	protected:
 		void fill_gap_scores(
 			typename score_matrix::slice_type &slice,
@@ -130,6 +136,27 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			// Add GSGT_BOTH to the corner, make sure that it does not change the previous value.
 			assert(gap_start_position_type::GSP_BOTH == (gap_start_position_type::GSP_BOTH | (column[0] & gap_start_position_type::GSP_MASK)));
 			column[0].fetch_or(gap_start_position_type::GSP_BOTH);
+		}
+	}
+	
+	
+	template <typename t_aligner>
+	void aligner_sample <t_aligner>::copy_first_sample_values(
+		aligner_sample <t_aligner> const &src,
+		std::size_t const segment_length,
+		std::size_t const segment_count
+	)
+	{
+		auto const first_score_sample(src.score_samples.column(0));
+		auto const first_gap_score_sample(src.gap_score_samples.column(0));
+		for (std::size_t i(1); i < segment_count; ++i)
+		{
+			// Currently this function should only be called when these values have not been set.
+			assert(0 == score_samples(0, i));
+			assert(0 == gap_score_samples(0, i));
+			
+			score_samples(0, i)		= first_score_sample[i * segment_length];
+			gap_score_samples(0, i)	= first_gap_score_sample[i * segment_length];
 		}
 	}
 }}}

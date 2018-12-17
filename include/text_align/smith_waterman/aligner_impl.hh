@@ -64,8 +64,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			score_type const prev_diag_score,
 			t_lhs_c const lhs_c,
 			t_rhs_c const rhs_c,
-			std::size_t const j,
-			std::size_t const i,
+			score_type gap_score_lhs,
 			score_type gap_score_rhs,
 			score_result &result
 		) const;
@@ -107,20 +106,18 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		score_type const prev_diag_score,
 		t_lhs_c const lhs_c,
 		t_rhs_c const rhs_c,
-		std::size_t const j,
-		std::size_t const i,
+		score_type gap_score_lhs,	// Copy.
 		score_type gap_score_rhs,	// Copy.
 		score_result &result
 	) const
 	{
-		// Calculate the score for (j + 1, i + 1).
 		auto const identity_score(this->m_parameters->identity_score);
 		auto const mismatch_penalty(this->m_parameters->mismatch_penalty);
 		auto const gap_penalty(this->m_parameters->gap_penalty);
 		auto const gap_start_penalty(this->m_parameters->gap_start_penalty);
 		
 		// Update the existing gap score s.t. the gap would continue here.
-		auto const gap_score_lhs(this->m_data->gap_scores_lhs[1 + j] + gap_penalty);
+		gap_score_lhs += gap_penalty;
 		gap_score_rhs += gap_penalty;
 		
 		auto const s1(prev_diag_score + (text_align::is_equal(lhs_c, rhs_c) ? identity_score : mismatch_penalty));
@@ -235,7 +232,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			auto const rhs_c(*rhs_it);
 			auto lhs_it_2(lhs_it);
 			score_type gap_score_rhs(gap_scores_rhs[1 + i]);
-
+			
 			// Fill the first row, needed for the first value of prev_diag_score on the next iteration.
 			(*dst_buffer_ptr)[lhs_idx] = topmost_row[1 + i];
 			
@@ -244,7 +241,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				assert(lhs_it_2 != m_lhs_text->end());
 				auto const lhs_c(*lhs_it_2);
 				auto const prev_diag_score((*src_buffer_ptr)[j]);
-				calculate_score(prev_diag_score, lhs_c, rhs_c, j, i, gap_score_rhs, result);
+				calculate_score(prev_diag_score, lhs_c, rhs_c, this->m_data->gap_scores_lhs[1 + j], gap_score_rhs, result);
 				this->did_calculate_score(1 + j, 1 + i, result, t_initial);
 				
 				// Store the values.
@@ -271,10 +268,12 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				
 				auto const lhs_c(*lhs_it_2);
 				auto const prev_diag_score((*src_buffer_ptr)[lhs_limit - 1]);
-				calculate_score(prev_diag_score, lhs_c, rhs_c, lhs_limit - 1, i, gap_score_rhs, result);
+				calculate_score(prev_diag_score, lhs_c, rhs_c, this->m_data->gap_scores_lhs[lhs_limit], gap_score_rhs, result);
 				this->did_calculate_score(lhs_limit, 1 + i, result, t_initial);
 				
 				this->m_rhs->score_samples(1 + i, 1 + lhs_block_idx)		= result.score;									// Horizontal
+				this->m_data->gap_scores_lhs[lhs_limit]						= result.gap_score_lhs;
+				gap_score_rhs												= result.gap_score_rhs;
 				this->m_rhs->gap_score_samples(1 + i, 1 + lhs_block_idx)	= result.gap_score_rhs;							// Horizontal
 				do_and_assert_eq(this->m_rhs->traceback_samples(1 + i, 1 + lhs_block_idx).fetch_or(result.max_idx), 0);		// Horizontal, values same as arrow_type::*
 				do_and_assert_eq(this->m_rhs->gap_start_position_samples(1 + i, 1 + lhs_block_idx).fetch_or(result.did_start_gap), 0);	// Horizontal
@@ -300,7 +299,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			
 			auto const rhs_c(*rhs_it);
 			auto lhs_it_2(lhs_it);
-			score_type gap_score_rhs(gap_scores_rhs[rhs_limit - 1]);
+			score_type gap_score_rhs(gap_scores_rhs[rhs_limit]);
 			auto const limit(lhs_limit + should_calculate_final_row - 1); // Consider the bottom-right corner.
 
 			for (std::size_t j(lhs_idx); j < limit; ++j) // Row
@@ -309,10 +308,12 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				
 				auto const lhs_c(*lhs_it_2);
 				auto const prev_diag_score((*src_buffer_ptr)[j]);
-				calculate_score(prev_diag_score, lhs_c, rhs_c, j, rhs_limit - 1, gap_score_rhs, result);
+				calculate_score(prev_diag_score, lhs_c, rhs_c, this->m_data->gap_scores_lhs[1 + j], gap_score_rhs, result);
 				this->did_calculate_score(1 + j, rhs_limit, result, t_initial);
 				
 				this->m_lhs->score_samples(1 + j, 1 + rhs_block_idx)		= result.score;									// Vertical
+				this->m_data->gap_scores_lhs[1 + j]							= result.gap_score_lhs;
+				gap_score_rhs												= result.gap_score_rhs;
 				this->m_lhs->gap_score_samples(1 + j, 1 + rhs_block_idx)	= result.gap_score_lhs;							// Vertical
 				do_and_assert_eq(this->m_lhs->traceback_samples(1 + j, 1 + rhs_block_idx).fetch_or(result.max_idx), 0);		// Vertical, values same as arrow_type::*
 				do_and_assert_eq(this->m_lhs->gap_start_position_samples(1 + j, 1 + rhs_block_idx).fetch_or(result.did_start_gap), 0);	// Vertical
