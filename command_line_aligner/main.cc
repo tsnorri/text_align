@@ -102,11 +102,11 @@ public:
 		if (initial)
 		{
 			// Store the calculated values.
-			assert(SCORE_MAX == m_scores.score(j, i));
-			assert(SCORE_MAX == m_scores.gap_score_lhs(j, i));
-			assert(SCORE_MAX == m_scores.gap_score_rhs(j, i));
-			assert(UINT8_MAX == m_scores.max_idx(j, i));
-			assert(UINT8_MAX == m_scores.did_start_gap(j, i));
+			text_align_assert(SCORE_MAX == m_scores.score(j, i));
+			text_align_assert(SCORE_MAX == m_scores.gap_score_lhs(j, i));
+			text_align_assert(SCORE_MAX == m_scores.gap_score_rhs(j, i));
+			text_align_assert(UINT8_MAX == m_scores.max_idx(j, i));
+			text_align_assert(UINT8_MAX == m_scores.did_start_gap(j, i));
 			
 			m_scores.score(j, i) = result.score;
 			m_scores.gap_score_lhs(j, i) = result.gap_score_lhs;
@@ -116,11 +116,11 @@ public:
 		}
 		else
 		{
-			assert(m_scores.score(j, i) == result.score);
-			assert(m_scores.gap_score_lhs(j, i) == result.gap_score_lhs);
-			assert(m_scores.gap_score_rhs(j, i) == result.gap_score_rhs);
-			assert(m_scores.max_idx(j, i) == result.max_idx);
-			assert(m_scores.did_start_gap(j, i) == result.did_start_gap);
+			text_align_assert(m_scores.score(j, i) == result.score);
+			text_align_assert(m_scores.gap_score_lhs(j, i) == result.gap_score_lhs);
+			text_align_assert(m_scores.gap_score_rhs(j, i) == result.gap_score_rhs);
+			text_align_assert(m_scores.max_idx(j, i) == result.max_idx);
+			text_align_assert(m_scores.did_start_gap(j, i) == result.did_start_gap);
 		}
 	}
 };
@@ -168,7 +168,7 @@ std::size_t copy_distance(t_range range)
 template <typename t_range, typename t_block>
 void print_aligned(t_range const &range, boost::dynamic_bitset <t_block> const &gaps)
 {
-	//assert(str.size() <= gaps.size());
+	//text_align_assert(str.size() <= gaps.size());
 	
 	std::string buffer;
 	
@@ -181,7 +181,7 @@ void print_aligned(t_range const &range, boost::dynamic_bitset <t_block> const &
 	{
 		if (0 == gaps[i])
 		{
-			assert(it != end);
+			text_align_assert(it != end);
 			boost::locale::utf::utf_traits <char>::encode(*it++, ostream_it);
 		}
 		else
@@ -189,7 +189,7 @@ void print_aligned(t_range const &range, boost::dynamic_bitset <t_block> const &
 			std::cout << '-';
 		}
 	}
-	assert(it == end);
+	text_align_assert(it == end);
 	std::cout << std::endl;
 }
 
@@ -256,8 +256,8 @@ void run_aligner(
 		auto const rhsr(ta::make_code_point_iterator_range(rhsv.cbegin(), rhsv.cend()));
 		auto const lhs_len(copy_distance(lhsr));
 		auto const rhs_len(copy_distance(rhsr));
-		assert(lhsr.begin() != lhsr.end());
-		assert(rhsr.begin() != rhsr.end());
+		text_align_assert(lhsr.begin() != lhsr.end());
+		text_align_assert(rhsr.begin() != rhsr.end());
 		
 		delegate.will_run_aligner(aligner, lhs_len, rhs_len);
 		aligner.align(lhsr, rhsr, lhs_len, rhs_len);
@@ -295,7 +295,7 @@ void process_input(boost::asio::io_context &pool, gengetopt_args_info const &arg
 					run_aligner(verifying_aligner, ad, pool, lhsv, rhsv, args_info);
 					lhs_expected_gaps = verifying_aligner.lhs_gaps();
 					rhs_expected_gaps = verifying_aligner.rhs_gaps();
-					assert(lhs_expected_gaps.size() == rhs_expected_gaps.size());
+					text_align_assert(lhs_expected_gaps.size() == rhs_expected_gaps.size());
 				}
 				
 				tested_aligner_type tested_aligner(pool, td);
@@ -306,7 +306,7 @@ void process_input(boost::asio::io_context &pool, gengetopt_args_info const &arg
 					// Check the gap vectors.
 					auto const &lhs_gaps(tested_aligner.lhs_gaps());
 					auto const &rhs_gaps(tested_aligner.rhs_gaps());
-					assert(lhs_gaps.size() == rhs_gaps.size());
+					text_align_assert(lhs_gaps.size() == rhs_gaps.size());
 					if (lhs_expected_gaps.size() != lhs_gaps.size())
 						std::cerr << "Traceback lengths do not match. Expected " << lhs_expected_gaps.size() << ", got " << lhs_gaps.size() << ".\n";
 					

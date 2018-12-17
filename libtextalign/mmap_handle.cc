@@ -3,13 +3,13 @@
  * This code is licensed under MIT license (see LICENSE for details).
  */
 
-#include <cassert>
 #include <cstring>
 #include <fcntl.h>
 #include <iostream>
 #include <stdexcept>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <text_align/assert.hh>
 #include <text_align/mmap_handle.hh>
 #include <unistd.h>
 
@@ -20,7 +20,7 @@ namespace text_align {
 	{
 		if (m_mapped_size)
 		{
-			assert(m_content);
+			text_align_assert(m_content);
 			if (-1 == munmap(m_content, m_mapped_size))
 				std::cerr << "munmap: " << strerror(errno) << std::endl;
 		}
@@ -31,7 +31,7 @@ namespace text_align {
 	{
 		if (m_mapped_size)
 		{
-			assert(m_content);
+			text_align_assert(m_content);
 			if (-1 == munmap(m_content, m_mapped_size))
 				throw std::runtime_error(strerror(errno));
 			

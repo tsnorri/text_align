@@ -118,10 +118,10 @@ namespace text_align { namespace detail {
 
 		std::ptrdiff_t distance_to(packed_vector_iterator_base const &other) const
 		{
-			assert(this->m_idx <= std::numeric_limits <std::ptrdiff_t>::max());
-			assert(other.m_idx <= std::numeric_limits <std::ptrdiff_t>::max());
+			text_align_assert(this->m_idx <= std::numeric_limits <std::ptrdiff_t>::max());
+			text_align_assert(other.m_idx <= std::numeric_limits <std::ptrdiff_t>::max());
 			auto const retval(other.m_idx - this->m_idx);
-			assert(std::numeric_limits <std::ptrdiff_t>::min() <= retval);
+			text_align_assert(std::numeric_limits <std::ptrdiff_t>::min() <= retval);
 			return retval;
 		}
 	};
@@ -212,7 +212,7 @@ namespace text_align {
 		std::size_t size() const { return m_size; }											// Size in elements.
 		std::size_t available_size() const { return m_values.size() * ELEMENT_COUNT; }
 		std::size_t word_size() const { return m_values.size(); }
-		void set_size(std::size_t new_size) { assert(new_size <= available_size()); m_size = new_size; }
+		void set_size(std::size_t new_size) { text_align_assert(new_size <= available_size()); m_size = new_size; }
 		
 		constexpr std::size_t word_bits() const { return WORD_BITS; }
 		constexpr std::size_t element_bits() const { return t_bits; }
@@ -251,7 +251,7 @@ namespace text_align {
 		std::memory_order const order
 	) const -> word_type
 	{
-		assert(idx < m_size);
+		text_align_assert(idx < m_size);
 		auto const word_idx(idx / ELEMENT_COUNT);
 		auto const el_idx(idx % ELEMENT_COUNT);
 		word_type const retval(m_values[word_idx].load(order));
@@ -268,8 +268,8 @@ namespace text_align {
 	{
 		// Determine the position of the given index
 		// inside a word and shift the given value.
-		assert(idx < m_size);
-		assert(val == (val & ELEMENT_MASK));
+		text_align_assert(idx < m_size);
+		text_align_assert(val == (val & ELEMENT_MASK));
 
 		auto const word_idx(idx / ELEMENT_COUNT);
 		auto const el_idx(idx % ELEMENT_COUNT);
@@ -292,8 +292,8 @@ namespace text_align {
 	{
 		// Create a mask that has all bits set except for the given value.
 		// Then use bitwise or with the given value and use fetch_and.
-		assert(idx < m_size);
-		assert(val == (val & ELEMENT_MASK));
+		text_align_assert(idx < m_size);
+		text_align_assert(val == (val & ELEMENT_MASK));
 		
 		word_type mask(ELEMENT_MASK);
 		auto const word_idx(idx / ELEMENT_COUNT);

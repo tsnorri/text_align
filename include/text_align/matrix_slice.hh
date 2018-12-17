@@ -51,8 +51,8 @@ namespace text_align { namespace detail {
 		
 		std::size_t size() const { return m_slice.size(); }
 		
-		reference operator[](std::size_t const idx) { assert(idx < size()); return *(begin() + idx); } // FIXME: throw.
-		const_reference operator[](std::size_t const idx) const { assert(idx < size()); return *(begin() + idx); } // FIXME: throw.
+		reference operator[](std::size_t const idx) { text_align_assert(idx < size()); return *(begin() + idx); }
+		const_reference operator[](std::size_t const idx) const { text_align_assert(idx < size()); return *(begin() + idx); }
 		
 		matrix_iterator begin() { return matrix_iterator(*m_matrix, m_slice.start(), m_slice.stride()); }
 		matrix_iterator end() { return matrix_iterator(*m_matrix, m_slice.start() + m_slice.size() * m_slice.stride(), m_slice.stride()); }
@@ -118,7 +118,7 @@ namespace text_align { namespace detail {
 	template <typename t_word_range, typename t_caller>
 	auto packed_matrix_slice <t_matrix>::to_word_range(t_caller &caller) const -> t_word_range
 	{
-		assert(1 == caller.m_slice.stride());
+		text_align_assert(1 == caller.m_slice.stride());
 		return t_word_range(caller.begin().to_vector_iterator(), caller.end().to_vector_iterator());
 	}
 }}

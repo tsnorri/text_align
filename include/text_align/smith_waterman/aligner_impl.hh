@@ -105,11 +105,9 @@ namespace text_align { namespace smith_waterman { namespace detail {
 	{
 		auto column(score_buffer.column(column_idx));
 		
-#ifndef NDEBUG
 		auto const count(lhs_limit - lhs_idx);
-		assert(count <= column.size());
-		assert(count <= std::distance(src.begin() + lhs_idx, src.end()));
-#endif
+		text_align_assert(count <= column.size());
+		text_align_assert(count <= std::distance(src.begin() + lhs_idx, src.end()));
 		
 		auto it(src.begin());
 		std::copy(it + lhs_idx, it + lhs_limit, column.begin());
@@ -144,7 +142,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		// When caching the value, don't add gap_start_penalty.
 		auto const scores(make_array <score_type>(s1, gap_start_penalty + s2, gap_start_penalty + s3));
 		result.max_idx = argmax_element(scores.begin(), scores.end());
-		assert(result.max_idx < scores.size());
+		text_align_assert(result.max_idx < scores.size());
 		result.score = scores[result.max_idx];
 		
 		// Check if the target cell should be used as a gap start position.
@@ -180,7 +178,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		score_type &gap_score_rhs					// Out
 	)
 	{
-		assert(lhs_it != m_lhs_text->end());
+		text_align_assert(lhs_it != m_lhs_text->end());
 		auto const lhs_c(*lhs_it);
 		auto const prev_diag_score((*src_buffer_ptr)[row_idx]);
 		calculate_score(prev_diag_score, lhs_c, rhs_c, this->m_data->gap_scores_lhs[1 + row_idx], gap_score_rhs, result);
@@ -240,8 +238,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		bool const should_calculate_final_column(argmin_element(rhs_limits.begin(), rhs_limits.end()));
 		auto const lhs_limit(lhs_limits[should_calculate_final_row]);
 		auto const rhs_limit(rhs_limits[should_calculate_final_column]);
-		assert(lhs_limit - lhs_idx <= segment_length);
-		assert(rhs_limit - rhs_idx <= segment_length);
+		text_align_assert(lhs_limit - lhs_idx <= segment_length);
+		text_align_assert(rhs_limit - rhs_idx <= segment_length);
 		
 		// Score buffers.
 		auto *src_buffer_ptr(&this->m_data->score_buffer_1);
@@ -287,7 +285,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		score_result result((*src_buffer_ptr)[lhs_limit - 1]);
 		for (std::size_t i(rhs_idx); i < rhs_limit - 1; ++i) // Column
 		{
-			assert(rhs_it != m_rhs_text->end());
+			text_align_assert(rhs_it != m_rhs_text->end());
 			
 			auto const rhs_c(*rhs_it);
 			auto lhs_it_2(lhs_it);
@@ -336,7 +334,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		// Fill the next sample column and the corner if needed.
 		if (t_initial && should_calculate_final_column)
 		{
-			assert(rhs_it != m_rhs_text->end());
+			text_align_assert(rhs_it != m_rhs_text->end());
 			auto const column_idx(rhs_limit - 1);
 			
 			auto const rhs_c(*rhs_it);
@@ -391,8 +389,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		// lhs_idx and rhs_idx point to the upper left corner of the final block, that is, the bottom-right one.
 		auto const lhs_idx(seg_len * lhs_block_idx);
 		auto const rhs_idx(seg_len * rhs_block_idx);
-		assert(lhs_idx <= lhs_len);
-		assert(rhs_idx <= rhs_len);
+		text_align_assert(lhs_idx <= lhs_len);
+		text_align_assert(rhs_idx <= rhs_len);
 		std::size_t j_limit(min(seg_len, 1 + lhs_len - lhs_idx)); // (Last) row
 		std::size_t i_limit(min(seg_len, 1 + rhs_len - rhs_idx)); // (Last) column
 		std::size_t next_i_limit(i_limit);
@@ -440,7 +438,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			fill_block <false>(lhs_block_idx, rhs_block_idx, score_buffer_ptr);
 
 			// If this is the last block, check that the corner is marked.
-			assert((! (0 == lhs_block_idx && 0 == rhs_block_idx)) || traceback(0, 0) == arrow_type::ARROW_FINISH);
+			text_align_assert((! (0 == lhs_block_idx && 0 == rhs_block_idx)) || traceback(0, 0) == arrow_type::ARROW_FINISH);
 			
 			// Continue finding the gap starting position if needed.
 			{
@@ -454,7 +452,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 						append_bits(this->m_rhs->gaps, steps, 0);
 						if (!res)
 						{
-							assert(rhs_block_idx);
+							text_align_assert(rhs_block_idx);
 							--rhs_block_idx;
 							i = seg_len - 1;
 							goto continue_loop;
@@ -469,7 +467,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 						append_bits(this->m_rhs->gaps, steps, 1);
 						if (!res)
 						{
-							assert(lhs_block_idx);
+							text_align_assert(lhs_block_idx);
 							--lhs_block_idx;
 							j = seg_len - 1;
 							goto continue_loop;
@@ -501,7 +499,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 						{
 							if (0 == i)
 							{
-								assert(rhs_block_idx);
+								text_align_assert(rhs_block_idx);
 								--rhs_block_idx;
 								i = seg_len - 1;
 								next_i_limit = seg_len;
@@ -513,7 +511,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 							
 							if (0 == j)
 							{
-								assert(lhs_block_idx);
+								text_align_assert(lhs_block_idx);
 								--lhs_block_idx;
 								j = seg_len - 1;
 								next_j_limit = seg_len;
@@ -526,8 +524,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 							goto continue_loop;
 						}
 					
-						assert(i);
-						assert(j);
+						text_align_assert(i);
+						text_align_assert(j);
 						--i;
 						--j;
 						
@@ -541,7 +539,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 						append_bits(this->m_rhs->gaps, steps, 0);
 						if (!res)
 						{
-							assert(rhs_block_idx);
+							text_align_assert(rhs_block_idx);
 							--rhs_block_idx;
 							i = seg_len - 1;
 							next_i_limit = seg_len;
@@ -559,7 +557,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 						append_bits(this->m_rhs->gaps, steps, 1);
 						if (!res)
 						{
-							assert(lhs_block_idx);
+							text_align_assert(lhs_block_idx);
 							--lhs_block_idx;
 							j = seg_len - 1;
 							next_j_limit = seg_len;

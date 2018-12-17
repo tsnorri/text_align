@@ -115,16 +115,16 @@ namespace text_align {
 		// Otherwise, append the characters to a graph node that represents
 		// distinct segments.
 		auto const length(lhs_gaps.size());
-		assert(length == rhs_gaps.size());
+		text_align_assert(length == rhs_gaps.size());
 		for (std::size_t i(0); i < length; ++i)
 		{
 			bool lhs_has_gap(lhs_gaps[i]), rhs_has_gap(rhs_gaps[i]);
 			
-			always_assert(! (lhs_has_gap && rhs_has_gap));
+			text_align_always_assert(! (lhs_has_gap && rhs_has_gap));
 			if (! (lhs_has_gap || rhs_has_gap))
 			{
-				always_assert(lhs_it != lhs_end);
-				always_assert(rhs_it != rhs_end);
+				text_align_always_assert(lhs_it != lhs_end);
+				text_align_always_assert(rhs_it != rhs_end);
 				
 				auto const lhsc(*lhs_it++);
 				auto const rhsc(*rhs_it++);
@@ -136,13 +136,13 @@ namespace text_align {
 			}
 			else if (lhs_has_gap)
 			{
-				always_assert(rhs_it != rhs_end);
+				text_align_always_assert(rhs_it != rhs_end);
 				auto const rhsc(*rhs_it++);
 				append_to_distinct_segment(alignment_graph::GAP_CHARACTER, rhsc);
 			}
 			else if (rhs_has_gap)
 			{
-				always_assert(lhs_it != lhs_end);
+				text_align_always_assert(lhs_it != lhs_end);
 				auto const lhsc(*lhs_it++);
 				append_to_distinct_segment(lhsc, alignment_graph::GAP_CHARACTER);
 			}

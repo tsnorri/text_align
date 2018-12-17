@@ -10,6 +10,7 @@
 #include <boost/dynamic_bitset.hpp>
 
 #include <iostream>
+#include <text_align/assert.hh>
 #include <type_traits>
 
 
@@ -146,7 +147,7 @@ namespace text_align {
 		std::uint64_t mask{0x1};
 		std::uint64_t retval{};
 		
-		assert(std::distance(it, end) <= 64);
+		text_align_assert(std::distance(it, end) <= 64);
 		while (it != end)
 		{
 			auto val(*it);
@@ -216,7 +217,7 @@ namespace text_align {
 		
 		// Add the remaining block.
 		auto const remaining_count(bit_count % block_bits);
-		assert(remaining_count < block_bits);
+		text_align_assert(remaining_count < block_bits);
 		if (remaining_count)
 		{
 			t_block block(0);

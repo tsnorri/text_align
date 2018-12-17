@@ -120,7 +120,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			matrices::fill_column_with_bit_pattern <2>(column, arrow);
 			
 			// Add ARROW_FINISH to the corner, make sure that it does not change the previous value.
-			assert(arrow_type::ARROW_FINISH == (arrow_type::ARROW_FINISH | (column[0] & arrow_type::ARROW_MASK)));
+			text_align_assert(arrow_type::ARROW_FINISH == (arrow_type::ARROW_FINISH | (column[0] & arrow_type::ARROW_MASK)));
 			column[0].fetch_or(arrow_type::ARROW_FINISH);
 		}
 		
@@ -134,7 +134,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			matrices::fill_column_with_bit_pattern <2>(column, gap_start_position);
 			
 			// Add GSGT_BOTH to the corner, make sure that it does not change the previous value.
-			assert(gap_start_position_type::GSP_BOTH == (gap_start_position_type::GSP_BOTH | (column[0] & gap_start_position_type::GSP_MASK)));
+			text_align_assert(gap_start_position_type::GSP_BOTH == (gap_start_position_type::GSP_BOTH | (column[0] & gap_start_position_type::GSP_MASK)));
 			column[0].fetch_or(gap_start_position_type::GSP_BOTH);
 		}
 	}
@@ -152,8 +152,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		for (std::size_t i(1); i < segment_count; ++i)
 		{
 			// Currently this function should only be called when these values have not been set.
-			assert(0 == score_samples(0, i));
-			assert(0 == gap_score_samples(0, i));
+			text_align_assert(0 == score_samples(0, i));
+			text_align_assert(0 == gap_score_samples(0, i));
 			
 			score_samples(0, i)		= first_score_sample[i * segment_length];
 			gap_score_samples(0, i)	= first_gap_score_sample[i * segment_length];

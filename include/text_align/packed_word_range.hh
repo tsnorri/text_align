@@ -86,7 +86,7 @@ namespace text_align { namespace detail {
 		// Handle the left extent if not empty.
 		if (!m_left_extent.empty())
 		{
-			assert(
+			text_align_assert(
 				m_left_extent.begin().word_index() == m_left_extent.end().word_index() ||
 				m_left_extent.begin().word_index() == (m_left_extent.end() - 1).word_index()
 			);
@@ -103,7 +103,7 @@ namespace text_align { namespace detail {
 		// Handle the right extent if not empty.
 		if (!m_right_extent.empty())
 		{
-			assert(m_right_extent.begin().word_index() == m_right_extent.end().word_index());
+			text_align_assert(m_right_extent.begin().word_index() == m_right_extent.end().word_index());
 			
 			auto const offset(m_right_extent.begin().word_offset());
 			auto const length(m_right_extent.end().word_offset() - offset);
@@ -125,7 +125,7 @@ namespace text_align { namespace detail {
 			{
 				auto const size(m_right_extent.size());
 				auto const bits(size * ELEMENT_BITS);
-				assert(bits < WORD_BITS);
+				text_align_assert(bits < WORD_BITS);
 				
 				// end() is not past-the-end b.c. right_extent is not empty.
 				word_type const mask((0x1 << bits) - 1);
@@ -139,7 +139,7 @@ namespace text_align { namespace detail {
 			// m_mid.begin() is valid b.c. left extent is not empty.
 			auto const left_size(m_left_extent.size());
 			auto const left_bits(left_size * ELEMENT_BITS);
-			assert(left_bits < WORD_BITS);
+			text_align_assert(left_bits < WORD_BITS);
 			auto word((m_mid.begin() - 1)->load(order));
 			word >>= (m_left_extent.begin().word_offset() * ELEMENT_BITS);
 			for (auto const &atomic : m_mid)
@@ -160,7 +160,7 @@ namespace text_align { namespace detail {
 			{
 				auto const right_size(m_right_extent.size());
 				auto const right_bits(right_size * ELEMENT_BITS);
-				assert(right_bits < WORD_BITS);
+				text_align_assert(right_bits < WORD_BITS);
 
 				// m_mid.end() is not past-the-end b.c. right_extent is not empty.
 				word_type const mask((0x1 << right_bits) - 1);

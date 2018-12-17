@@ -58,7 +58,7 @@ namespace text_align { namespace matrices {
 	template <typename t_matrix>
 	typename t_matrix::slice_type row(t_matrix &matrix, std::size_t const row, std::size_t const first, std::size_t const limit)
 	{
-		assert(limit <= matrix.number_of_columns());
+		text_align_assert(limit <= matrix.number_of_columns());
 		std::slice const slice(matrix.idx(row, first), limit - first, matrix.stride());
 		return typename t_matrix::slice_type(matrix, slice);
 	}
@@ -67,7 +67,7 @@ namespace text_align { namespace matrices {
 	template <typename t_matrix>
 	typename t_matrix::slice_type column(t_matrix &matrix, std::size_t const column, std::size_t const first, std::size_t const limit)
 	{
-		assert(limit <= matrix.number_of_rows());
+		text_align_assert(limit <= matrix.number_of_rows());
 		std::slice const slice(matrix.idx(first, column), limit - first, 1);
 		return typename t_matrix::slice_type(matrix, slice);
 	}
@@ -76,7 +76,7 @@ namespace text_align { namespace matrices {
 	template <typename t_matrix>
 	typename t_matrix::const_slice_type const_row(t_matrix const &matrix, std::size_t const row, std::size_t const first, std::size_t const limit)
 	{
-		assert(limit <= matrix.number_of_columns());
+		text_align_assert(limit <= matrix.number_of_columns());
 		std::slice const slice(matrix.idx(row, first), limit - first, matrix.stride());
 		return typename t_matrix::const_slice_type(matrix, slice);
 	}
@@ -85,7 +85,7 @@ namespace text_align { namespace matrices {
 	template <typename t_matrix>
 	typename t_matrix::const_slice_type const_column(t_matrix const &matrix, std::size_t const column, std::size_t const first, std::size_t const limit)
 	{
-		assert(limit <= matrix.number_of_rows());
+		text_align_assert(limit <= matrix.number_of_rows());
 		std::slice const slice(matrix.idx(first, column), limit - first, 1);
 		return typename t_matrix::const_slice_type(matrix, slice);
 	}
@@ -120,8 +120,8 @@ namespace text_align { namespace matrices {
 		::text_align::detail::packed_matrix_slice <t_matrix> &dst
 	)
 	{
-		assert(src.size() <= dst.size());
-		always_assert(dst.is_word_aligned());
+		text_align_assert(src.size() <= dst.size());
+		text_align_always_assert(dst.is_word_aligned());
 		auto dst_it(dst.word_begin());
 		src.to_word_range().apply_aligned([&dst_it](auto word, std::size_t element_count){
 			dst_it->store(word);
@@ -146,7 +146,7 @@ namespace text_align { namespace matrices {
 		::text_align::detail::packed_matrix_slice <t_dst_matrix> &dst
 	)
 	{
-		assert(src.size() <= dst.size()); // FIXME: throw an exception?
+		text_align_assert(src.size() <= dst.size());
 		auto dst_it(dst.begin());
 		
 		auto const &src_range(src.to_word_range());
@@ -159,7 +159,7 @@ namespace text_align { namespace matrices {
 			](typename t_src_matrix::word_type word, std::size_t const element_count){ // FIXME: memory_order_acquire?
 				for (std::size_t i(0); i < element_count; ++i)
 				{
-					assert(dst_it != dst.end());
+					text_align_assert(dst_it != dst.end());
 					dst_it->fetch_or(word & t_src_matrix::ELEMENT_MASK); // FIXME: memory_order_release?
 					word >>= t_src_matrix::ELEMENT_BITS;
 					++dst_it;
@@ -190,7 +190,7 @@ namespace text_align { namespace matrices {
 		word_range.apply_parts(
 			[pattern](auto &atomic){ do_and_assert_eq(atomic.fetch_or(pattern), 0); },
 			[pattern](auto &atomic, std::size_t const offset, std::size_t const length){
-				assert(length);
+				text_align_assert(length);
 				auto p(pattern);
 				p >>= (t_matrix::WORD_BITS - length);
 				p <<= offset;

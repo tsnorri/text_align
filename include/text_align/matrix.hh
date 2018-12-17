@@ -66,7 +66,7 @@ namespace text_align { namespace detail {
 		std::ptrdiff_t distance_to(matrix_iterator const &other) const
 		{
 			auto const dist(std::distance(m_it, other.m_it));
-			assert(0 == dist % m_stride);
+			text_align_assert(0 == dist % m_stride);
 			auto const retval(dist / m_stride);
 			return retval;
 		}
@@ -125,17 +125,17 @@ namespace text_align {
 #endif
 			m_stride(rows)
 		{
-			assert(m_stride);
+			text_align_assert(m_stride);
 		}
 		
 		inline std::size_t idx(std::size_t const y, std::size_t const x) const
 		{
 			/* Column major order. */
-			assert(y < m_stride);
-			assert(x < m_columns);
-			assert(x < m_data.size() / m_stride);
+			text_align_assert(y < m_stride);
+			text_align_assert(x < m_columns);
+			text_align_assert(x < m_data.size() / m_stride);
 			std::size_t const retval(x * m_stride + y);
-			assert(retval < m_data.size());
+			text_align_assert(retval < m_data.size());
 			return retval;
 		}
 		
@@ -148,7 +148,7 @@ namespace text_align {
 		std::size_t const stride() const { return m_stride; }
 		void resize(std::size_t const rows, std::size_t const cols) { resize_if_needed(rows, cols); }
 		void resize(std::size_t const size) { m_data.resize(size); }
-		void set_stride(std::size_t const stride) { always_assert(0 == m_data.size() % m_stride); m_stride = stride; }
+		void set_stride(std::size_t const stride) { text_align_always_assert(0 == m_data.size() % m_stride); m_stride = stride; }
 		
 		template <typename t_fn>
 		void apply(t_fn &&fn);
