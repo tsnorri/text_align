@@ -8,7 +8,7 @@ The purpose of this library is to provide text alignment for large(ish) constant
 
 ### C++ Library
 
-- Compiler that supports C++17, e.g. GCC 7 or Clang 5
+- Compiler that supports C++17, e.g. GCC 7 or Clang 6
 - Boost (tested with version 1.67)
 - To build the provided command line tool, GNU Gengetopt is also required.
 
