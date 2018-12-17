@@ -86,7 +86,10 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		{
 			auto const rhs_c(*rhs_it++);
 			std::cerr << '\t';
-			boost::locale::utf::utf_traits <char, 1>::encode(rhs_c, out_it);
+			if (10 == rhs_c) // newline
+				std::cerr << "↩︎";
+			else
+				boost::locale::utf::utf_traits <char, 1>::encode(rhs_c, out_it);
 		}
 		std::cerr << '\n';
 		
@@ -170,7 +173,11 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				std::cerr << " \t" << j;
 			else
 			{
-				boost::locale::utf::utf_traits <char, 1>::encode(*lhs_it++, out_it);
+				auto const lhs_c(*lhs_it++);
+				if (10 == lhs_c) // newline
+					std::cerr << "↩︎";
+				else
+					boost::locale::utf::utf_traits <char, 1>::encode(lhs_c, out_it);
 				std::cerr << '\t' << j;
 			}
 
@@ -233,7 +240,11 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				std::cerr << " \t" << j;
 			else
 			{
-				boost::locale::utf::utf_traits <char, 1>::encode(*lhs_it++, out_it);
+				auto const lhs_c(*lhs_it++);
+				if (10 == lhs_c) // newline
+					std::cerr << "↩︎";
+				else
+					boost::locale::utf::utf_traits <char, 1>::encode(lhs_c, out_it);
 				std::cerr << '\t' << j;
 			}
 
