@@ -104,10 +104,12 @@ namespace text_align { namespace smith_waterman { namespace detail {
 	) const
 	{
 		auto column(score_buffer.column(column_idx));
-		auto const count(lhs_limit - lhs_idx);
 		
+#ifndef NDEBUG
+		auto const count(lhs_limit - lhs_idx);
 		assert(count <= column.size());
 		assert(count <= std::distance(src.begin() + lhs_idx, src.end()));
+#endif
 		
 		auto it(src.begin());
 		std::copy(it + lhs_idx, it + lhs_limit, column.begin());
