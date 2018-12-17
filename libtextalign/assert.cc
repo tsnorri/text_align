@@ -10,16 +10,12 @@ namespace text_align { namespace detail {
 	
 	void assertion_failure(char const *file, long const line, char const *assertion)
 	{
-		std::ostringstream os;
-		os << "Assertion failure at " << file << ':' << line << ": " << assertion;
-		throw std::runtime_error(os.str());
+		throw assertion_failure_exception(file, line, assertion);
 	}
 	
 	
 	void fail(char const *file, long const line)
 	{
-		std::ostringstream os;
-		os << "Assertion failure at " << file << ':' << line;
-		throw std::runtime_error(os.str());
+		throw assertion_failure_exception(file, line);
 	}
 }}
