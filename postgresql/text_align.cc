@@ -12,10 +12,10 @@ extern "C" {
 }
 
 #include <sstream>
-#include <text_align/aligner.hh>
 #include <text_align/alignment_graph_builder.hh>
 #include <text_align/code_point_iterator.hh>
 #include <text_align/json_serialize.hh>
+#include <text_align/smith_waterman/alignment_context.hh>
 
 
 namespace {
@@ -43,11 +43,11 @@ extern "C" {
 	{
 		namespace ta = text_align;
 		
-		if (5 != PG_NARGS())
+		if (6 != PG_NARGS())
 		{
 			ereport(ERROR, (
 				errcode(ERRCODE_PROTOCOL_VIOLATION),
-				errmsg("expected five arguments")
+				errmsg("expected six arguments: lhs, rhs, match_score, mismatch_penalty, gap_start_penalty, gap_penalty")
 			));
 		}
 
@@ -55,8 +55,9 @@ extern "C" {
 		auto const *rhs(PG_GETARG_TEXT_P(1));
 		auto const match_score(PG_GETARG_INT32(2));
 		auto const mismatch_penalty(PG_GETARG_INT32(3));
-		auto const gap_penalty(PG_GETARG_INT32(4));
-		
+		auto const gap_start_penalty(PG_GETARG_INT32(4));
+		auto const gap_penalty(PG_GETARG_INT32(5));
+
 		// Don't leak anything thrown.
 		try
 		{
@@ -70,10 +71,11 @@ extern "C" {
 			auto const rhs_len(copy_distance(rhsr));
 			
 			// Instantiate the aligner.
-			ta::alignment_context <std::int32_t, ta::smith_waterman_aligner> ctx;
+			ta::smith_waterman::alignment_context <std::int32_t, std::uint64_t> ctx;
 			auto &aligner(ctx.aligner());
 			aligner.set_identity_score(match_score);
 			aligner.set_mismatch_penalty(mismatch_penalty);
+			aligner.set_gap_start_penalty(gap_start_penalty);
 			aligner.set_gap_penalty(gap_penalty);
 			//aligner.set_prints_debugging_information(print_debugging_information);
 			
@@ -104,7 +106,7 @@ extern "C" {
 				errmsg("caught an unknown exception")
 			));
 		}
-
+		
 		PG_RETURN_NULL();
 	}
 }
