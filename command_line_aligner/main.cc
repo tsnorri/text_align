@@ -34,14 +34,27 @@ typedef ta::smith_waterman::detail::score_result <score_type> score_result;
 
 struct score_container
 {
-	ta::matrix <score_type>	scores;
+	ta::matrix <score_type>		score;
+	ta::matrix <score_type>		gap_score_lhs;
+	ta::matrix <score_type>		gap_score_rhs;
+	ta::matrix <std::uint8_t>	max_idx;
+	ta::matrix <std::uint8_t>	did_start_gap;
 	
 	score_container() = default;
 	
 	void resize(std::size_t const rows, std::size_t const columns)
 	{
-		scores.resize(rows, columns);
-		std::fill(scores.begin(), scores.end(), SCORE_MAX);
+		score.resize(rows, columns);
+		gap_score_lhs.resize(rows, columns);
+		gap_score_rhs.resize(rows, columns);
+		max_idx.resize(rows, columns);
+		did_start_gap.resize(rows, columns);
+		
+		std::fill(score.begin(), score.end(), SCORE_MAX);
+		std::fill(gap_score_lhs.begin(), gap_score_lhs.end(), SCORE_MAX);
+		std::fill(gap_score_rhs.begin(), gap_score_rhs.end(), SCORE_MAX);
+		std::fill(max_idx.begin(), max_idx.end(), UINT8_MAX);
+		std::fill(did_start_gap.begin(), did_start_gap.end(), UINT8_MAX);
 	}
 };
 
@@ -84,17 +97,30 @@ public:
 		m_scores.resize(1 + lhs_size, 1 + rhs_size);
 	}
 	
-	void did_calculate_score(ta::smith_waterman::aligner_base &aligner, std::size_t const j, std::size_t const i, score_result const &result, bool const initial)
+	void did_calculate_score(ta::smith_waterman::aligner_base &aligner, std::size_t j, std::size_t i, score_result const &result, bool initial)
 	{
 		if (initial)
 		{
-			// Store the calculated score.
-			assert(SCORE_MAX == m_scores.scores(j, i));
-			m_scores.scores(j, i) = result.score;
+			// Store the calculated values.
+			assert(SCORE_MAX == m_scores.score(j, i));
+			assert(SCORE_MAX == m_scores.gap_score_lhs(j, i));
+			assert(SCORE_MAX == m_scores.gap_score_rhs(j, i));
+			assert(UINT8_MAX == m_scores.max_idx(j, i));
+			assert(UINT8_MAX == m_scores.did_start_gap(j, i));
+			
+			m_scores.score(j, i) = result.score;
+			m_scores.gap_score_lhs(j, i) = result.gap_score_lhs;
+			m_scores.gap_score_rhs(j, i) = result.gap_score_rhs;
+			m_scores.max_idx(j, i) = result.max_idx;
+			m_scores.did_start_gap(j, i) = result.did_start_gap;
 		}
 		else
 		{
-			assert(m_scores.scores(j, i) == result.score);
+			assert(m_scores.score(j, i) == result.score);
+			assert(m_scores.gap_score_lhs(j, i) == result.gap_score_lhs);
+			assert(m_scores.gap_score_rhs(j, i) == result.gap_score_rhs);
+			assert(m_scores.max_idx(j, i) == result.max_idx);
+			assert(m_scores.did_start_gap(j, i) == result.did_start_gap);
 		}
 	}
 };
@@ -112,12 +138,22 @@ public:
 	void set_scores(score_container const &container) { m_scores = &container; }
 	
 protected:
-	void did_calculate_score(ta::smith_waterman::aligner_base &aligner, std::size_t const j, std::size_t const i, score_result const &result)
+	template <typename t_type>
+	void compare(char const *name, std::size_t const j, std::size_t const i, t_type const expected, t_type const actual)
+	{
+		if (actual != expected)
+			std::cerr << name << " mismatch at (" << j << ", " << i << "): expected " << +expected << ", actual " << +actual << ".\n";
+	}
+
+public:
+	void did_calculate_score(ta::smith_waterman::aligner_base &aligner, std::size_t j, std::size_t i, score_result const &result, bool initial)
 	{
 		// Compare to the pre-calculated.
-		auto const actual(m_scores->scores(j, i));
-		if (actual != result.score)
-			std::cerr << "Mismatch at (" << j << ", " << i << "): expected " << result.score << ", got " << actual << ".\n";
+		compare("score:        ", j, i, m_scores->score(j, i), result.score);
+		compare("gap_score_lhs:", j, i, m_scores->gap_score_lhs(j, i), result.gap_score_lhs);
+		compare("gap_score_rhs:", j, i, m_scores->gap_score_rhs(j, i), result.gap_score_rhs);
+		compare("max_idx:      ", j, i, m_scores->max_idx(j, i), result.max_idx);
+		compare("did_start_gap:", j, i, m_scores->did_start_gap(j, i), static_cast <std::uint8_t>(result.did_start_gap));
 	}
 };
 
@@ -251,14 +287,55 @@ void process_input(boost::asio::io_context &pool, gengetopt_args_info const &arg
 				tested_aligner_delegate td(pool);
 				td.set_scores(ad.scores());
 				
-				verifying_aligner_type verifying_aligner(pool, ad);
+				ta::smith_waterman::aligner_base::bit_vector lhs_expected_gaps, rhs_expected_gaps;
+				
+				{
+					verifying_aligner_type verifying_aligner(pool, ad);
+					configure_aligner(verifying_aligner, args_info);
+					run_aligner(verifying_aligner, ad, pool, lhsv, rhsv, args_info);
+					lhs_expected_gaps = verifying_aligner.lhs_gaps();
+					rhs_expected_gaps = verifying_aligner.rhs_gaps();
+					assert(lhs_expected_gaps.size() == rhs_expected_gaps.size());
+				}
+				
 				tested_aligner_type tested_aligner(pool, td);
-				
-				configure_aligner(verifying_aligner, args_info);
 				configure_aligner(tested_aligner, args_info);
-				
-				run_aligner(verifying_aligner, ad, pool, lhsv, rhsv, args_info);
 				run_aligner(tested_aligner, td, pool, lhsv, rhsv, args_info);
+				
+				{
+					// Check the gap vectors.
+					auto const &lhs_gaps(tested_aligner.lhs_gaps());
+					auto const &rhs_gaps(tested_aligner.rhs_gaps());
+					assert(lhs_gaps.size() == rhs_gaps.size());
+					if (lhs_expected_gaps.size() != lhs_gaps.size())
+						std::cerr << "Traceback lengths do not match. Expected " << lhs_expected_gaps.size() << ", got " << lhs_gaps.size() << ".\n";
+					
+					{
+						std::cerr << '\n';
+						std::size_t i(lhs_gaps.size());
+						std::size_t j(lhs_expected_gaps.size());
+						while (i && j)
+						{
+							--i;
+							--j;
+							if (lhs_gaps[i] != lhs_expected_gaps[j])
+								std::cerr << "Mismatch in lhs gaps at positions " << j << " (expected), " << i << " (actual).\n";
+						}
+					}
+					
+					{
+						std::cerr << '\n';
+						std::size_t i(rhs_gaps.size());
+						std::size_t j(rhs_expected_gaps.size());
+						while (i && j)
+						{
+							--i;
+							--j;
+							if (rhs_gaps[i] != rhs_expected_gaps[j])
+								std::cerr << "Mismatch in rhs gaps at positions " << j << " (expected), " << i << " (actual).\n";
+						}
+					}
+				}
 			}
 			else
 			{
