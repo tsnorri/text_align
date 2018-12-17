@@ -1,11 +1,13 @@
 # Copyright (c) 2018 Tuukka Norri
 # This code is licensed under MIT license (see LICENSE for details).
 
-from libc.stdint cimport int32_t
+# cython: language_level=3
+
+from libc.stdint cimport int32_t, uint64_t
 from libcpp.memory cimport unique_ptr
 from libcpp.vector cimport vector
-from smith_waterman_aligner cimport smith_waterman_alignment_context
-from alignment_graph_builder cimport node_base, common_node, distinct_node
+from .alignment_graph_builder cimport node_base, common_node, distinct_node
+from .smith_waterman_aligner cimport alignment_context
 
 include "char32_t.pxi"
 
@@ -20,4 +22,4 @@ cdef class AlignmentContext(object):
 	cdef object make_alignment_graph_from_segments(self, const vector[unique_ptr[node_base]] &segments)
 	
 cdef class SmithWatermanAlignmentContext(AlignmentContext):
-	cdef smith_waterman_alignment_context[int32_t] *ctx
+	cdef alignment_context[int32_t, uint64_t] *ctx

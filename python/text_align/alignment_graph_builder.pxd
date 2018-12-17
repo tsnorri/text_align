@@ -1,6 +1,8 @@
 # Copyright (c) 2018 Tuukka Norri
 # This code is licensed under MIT license (see LICENSE for details).
 
+# cython: language_level=3
+
 from libcpp cimport bool
 from libcpp.memory cimport unique_ptr
 from libcpp.vector cimport vector

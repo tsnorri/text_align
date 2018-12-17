@@ -7,8 +7,9 @@
 #define TEXT_ALIGN_RUN_ALIGNER_HH
 
 #include <boost/beast/core/span.hpp>
-#include <text_align/aligner.hh>
+#include <text_align/alignment_graph_builder.hh>
 #include <text_align/map_on_stack.hh>
+#include <text_align/smith_waterman/aligner.hh>
 
 
 namespace text_align { namespace detail {
@@ -83,6 +84,9 @@ namespace text_align
 		// Convert the Python strings to spans.
 		text_align::map_on_stack_fn <detail::span_from_buffer>(
 			[&ctx](auto const &lhss, auto const &rhss) {
+				if (ctx.stopped())
+					ctx.restart();
+				
 				ctx.aligner().align(lhss, rhss);
 				ctx.run();
 			},

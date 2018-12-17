@@ -1,7 +1,9 @@
 # Copyright (c) 2018 Tuukka Norri
 # This code is licensed under MIT license (see LICENSE for details).
 
-from alignment_graph_builder cimport alignment_graph_builder
+# cython: language_level=3
+
+from .alignment_graph_builder cimport alignment_graph_builder
 
 
 cdef extern from "run_aligner.hh" namespace "text_align":

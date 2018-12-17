@@ -1,23 +1,27 @@
 # Copyright (c) 2018 Tuukka Norri
 # This code is licensed under MIT license (see LICENSE for details).
 
-from libc.stdint cimport uint32_t
+# cython: language_level=3
+
+from libc.stdint cimport uint32_t, uint64_t
 from libcpp cimport bool
 from libcpp.vector cimport vector
 
 
-cdef extern from "<text_align/aligner.hh>" namespace "text_align":
+cdef extern from "<text_align/smith_waterman/aligner.hh>" namespace "text_align::smith_waterman":
 
-	cdef cppclass smith_waterman_aligner[t_score, t_delegate]:
+	cdef cppclass aligner[t_score, t_word, t_delegate]:
 		
 		t_score identity_score()
 		t_score mismatch_penalty()
 		t_score gap_penalty()
+		t_score gap_start_penalty()
 		uint32_t segment_length()
 		bool prints_debugging_information()
 		
 		void set_identity_score(t_score const)
 		void set_mismatch_penalty(t_score const)
+		void set_gap_start_penalty(t_score const)
 		void set_gap_penalty(t_score const)
 		void set_segment_length(uint32_t const)
 		void set_prints_debugging_information(bool const)
@@ -28,18 +32,14 @@ cdef extern from "<text_align/aligner.hh>" namespace "text_align":
 		
 		const vector[bool] &lhs_gaps()
 		const vector[bool] &rhs_gaps()
-	
-	
-	cdef cppclass alignment_context[t_score, t_aligner]:
-		alignment_context() except +
-		t_aligner &aligner()
-		void run() except +
-	
-	
-	# FIXME: Cython does not seem to support template template arguments.
-	# A wrapper like this around a using directive seems fine, though.
-	cdef cppclass smith_waterman_alignment_context[t_score]:
-		smith_waterman_alignment_context() except +
-		void run() except +
 		
-		smith_waterman_aligner[t_score, smith_waterman_alignment_context[t_score]] &aligner()
+
+cdef extern from "<text_align/smith_waterman/alignment_context.hh>" namespace "text_align::smith_waterman":
+
+	cdef cppclass alignment_context[t_score, t_word]:
+		alignment_context() except +
+		void run() except +
+		void restart() except +
+		bool stopped() except +
+		
+		aligner[t_score, t_word, alignment_context[t_score, t_word]] &aligner()
