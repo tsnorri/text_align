@@ -43,6 +43,8 @@ namespace text_align { namespace smith_waterman {
 		boost::asio::io_context const &execution_context() const { return m_ctx; }
 		
 		void run() { m_ctx.run(); }
+		void restart() { m_ctx.restart(); }
+		bool stopped() const { return m_ctx.stopped(); }
 		
 	protected:
 		void finish(aligner_base &aligner) { m_ctx.stop(); }
