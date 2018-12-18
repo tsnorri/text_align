@@ -152,7 +152,7 @@ namespace text_align { namespace matrices {
 		auto const &src_range(src.to_word_range());
 		src_range.apply_aligned(
 			[
-#ifndef NDEBUG
+#ifndef TEXT_ALIGN_NDEBUG
 			 	&dst,
 #endif
 				&dst_it

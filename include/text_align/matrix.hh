@@ -108,7 +108,7 @@ namespace text_align {
 		
 	protected:
 		std::vector <value_type>	m_data;
-#ifndef NDEBUG
+#ifndef TEXT_ALIGN_NDEBUG
 		std::size_t					m_columns{};
 #endif
 		std::size_t					m_stride{1};
@@ -120,7 +120,7 @@ namespace text_align {
 		matrix() = default;
 		matrix(std::size_t const rows, std::size_t const columns):
 			m_data(columns * rows, 0),
-#ifndef NDEBUG
+#ifndef TEXT_ALIGN_NDEBUG
 			m_columns(columns),
 #endif
 			m_stride(rows)
@@ -209,7 +209,7 @@ namespace text_align {
 				resize(rows * columns);
 
 			set_stride(rows);
-#ifndef NDEBUG
+#ifndef TEXT_ALIGN_NDEBUG
 			m_columns = columns;
 #endif
 		}
@@ -222,7 +222,7 @@ namespace text_align {
 		using std::swap;
 		swap(m_data, rhs.m_data);
 		swap(m_stride, rhs.m_stride);
-#ifndef NDEBUG
+#ifndef TEXT_ALIGN_NDEBUG
 		swap(m_columns, rhs.m_columns);
 #endif
 	}

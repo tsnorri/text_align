@@ -105,9 +105,10 @@ namespace text_align { namespace smith_waterman { namespace detail {
 	{
 		auto column(score_buffer.column(column_idx));
 		
+		text_align_assert_lte(lhs_idx, lhs_limit);
 		auto const count(lhs_limit - lhs_idx);
-		text_align_assert(count <= column.size());
-		text_align_assert(count <= std::distance(src.begin() + lhs_idx, src.end()));
+		text_align_assert_lte(count, column.size());
+		text_align_assert_lte(count + lhs_idx, std::distance(src.begin(), src.end())); // count <= std::distance(src.begin() + lhs_idx, src.end())
 		
 		auto it(src.begin());
 		std::copy(it + lhs_idx, it + lhs_limit, column.begin());

@@ -15,10 +15,21 @@
 #define text_align_always_assert(X)	do { if (!(X)) ::text_align::detail::assertion_failure(__FILE__, __LINE__, #X); } while (false)
 #define fail_assertion()			do { ::text_align::detail::fail(__FILE__, __LINE__); } while (false)
 
-#ifndef NDEBUG
-#	define do_and_assert_eq(X, Y) do { if ((X) != (Y)) ::text_align::detail::assertion_failure(__FILE__, __LINE__, #X); } while (false)
+// FIXME: add prefix to do_and_assert_eq, fail_assertion.
+#ifndef TEXT_ALIGN_NDEBUG
+#	define do_and_assert_eq(X, Y) \
+		do { \
+			if ((X) != (Y)) \
+				::text_align::detail::assertion_failure(__FILE__, __LINE__, text_align_stringify(X == Y)); \
+		} while (false)
+#	define text_align_assert_lte(X, Y) \
+		do { \
+			if (!::text_align::check_lte(X, Y)) \
+				::text_align::detail::assertion_failure(__FILE__, __LINE__, text_align_stringify(X <= Y)); \
+		} while (false)
 #else
 #	define do_and_assert_eq(X, Y) do { (X); } while (false)
+#	define text_align_assert_lte(X, Y)
 #endif
 
 

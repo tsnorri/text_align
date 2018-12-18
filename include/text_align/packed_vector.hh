@@ -121,7 +121,7 @@ namespace text_align { namespace detail {
 			text_align_assert(this->m_idx <= std::numeric_limits <std::ptrdiff_t>::max());
 			text_align_assert(other.m_idx <= std::numeric_limits <std::ptrdiff_t>::max());
 			auto const retval(other.m_idx - this->m_idx);
-			text_align_assert(std::numeric_limits <std::ptrdiff_t>::min() <= retval);
+			text_align_assert_lte(std::numeric_limits <std::ptrdiff_t>::min(), retval);
 			return retval;
 		}
 	};

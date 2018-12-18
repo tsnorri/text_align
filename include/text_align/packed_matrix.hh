@@ -134,7 +134,7 @@ namespace text_align {
 
 	protected:
 		vector_type											m_data;
-#ifndef NDEBUG
+#ifndef TEXT_ALIGN_NDEBUG
 		std::size_t											m_columns{};
 #endif
 		std::size_t											m_stride{1};
@@ -143,7 +143,7 @@ namespace text_align {
 		packed_matrix() = default;
 		packed_matrix(std::size_t const rows, std::size_t const columns):
 			m_data(columns * rows),
-#ifndef NDEBUG
+#ifndef TEXT_ALIGN_NDEBUG
 			m_columns(columns),
 #endif
 			m_stride(rows)
