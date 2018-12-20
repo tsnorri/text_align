@@ -728,6 +728,21 @@ BOOST_AUTO_TEST_CASE(test_int_vector_push_multiple)
 }
 
 
+BOOST_AUTO_TEST_CASE(test_int_vector_reverse)
+{
+	text_align::int_vector <8> vec;
+	for (std::size_t i(0); i < 10; ++i)
+		vec.push_back(i);
+
+	BOOST_TEST(10 == vec.size());
+	vec.reverse();
+	
+	std::size_t i(0);
+	for (auto const val : vec)
+		BOOST_TEST(9 - i++ == val);
+}
+
+
 // Aligner tests
 BOOST_AUTO_TEST_CASE(test_aligner_0)
 {

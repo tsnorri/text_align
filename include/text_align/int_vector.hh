@@ -7,8 +7,9 @@
 #define TEXT_ALIGN_INT_VECTOR_HH
 
 #include <range/v3/algorithm/copy.hpp>
-#include <range/v3/utility/iterator.hpp>
+#include <range/v3/view/sliding.hpp>
 #include <range/v3/view/transform.hpp>
+#include <text_align/algorithm.hh>
 #include <vector>
 
 
@@ -247,7 +248,11 @@ namespace text_align {
 		
 		// Additional helpers.
 		void push_back(word_type mask, std::size_t count = 1);
+		void reverse();
 	};
+	
+	
+	typedef int_vector <1> bit_vector;
 	
 	
 	template <unsigned int t_bits, typename t_word>
@@ -368,6 +373,29 @@ namespace text_align {
 			m_values.push_back(new_mask);
 			m_size += count;
 		}
+	}
+	
+	
+	template <unsigned int t_bits, typename t_word>
+	void int_vector <t_bits, t_word>::reverse()
+	{
+		if (0 == m_values.size())
+			return;
+		
+		// Reverse the word order.
+		std::reverse(m_values.begin(), m_values.end());
+		
+		for (auto &val : m_values)
+			val = reverse_bits <ELEMENT_BITS>(val);
+		
+		auto const shift_left((m_size % ELEMENT_COUNT) * ELEMENT_BITS);
+		auto const shift_right(WORD_BITS - shift_left);
+		for (auto const &pair : m_values | ranges::view::sliding(2))
+		{
+			pair[0] >>= shift_right;
+			pair[0] |= (pair[1] << shift_left);
+		}
+		*m_values.rbegin() >>= shift_right;
 	}
 }
 
