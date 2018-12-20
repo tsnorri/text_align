@@ -32,6 +32,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		};
 		
 	protected:
+		std::vector <typename t_lhs::const_iterator> m_lhs_iterators;
+		std::vector <typename t_rhs::const_iterator> m_rhs_iterators;
 		t_lhs const	*m_lhs_text{nullptr};
 		t_rhs const	*m_rhs_text{nullptr};
 	
@@ -40,12 +42,18 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		aligner_impl(
 			t_owner &owner,
 			t_lhs const &lhs,
-			t_rhs const &rhs
+			t_rhs const &rhs,
+			std::size_t const lhs_blocks,
+			std::size_t const rhs_blocks
 		):
 			aligner_impl_base <t_owner>(owner),
+			m_lhs_iterators(lhs_blocks),
+			m_rhs_iterators(rhs_blocks),
 			m_lhs_text(&lhs),
 			m_rhs_text(&rhs)
 		{
+			m_lhs_iterators[0] = m_lhs_text->begin();
+			m_rhs_iterators[0] = m_rhs_text->begin();
 		}
 		
 		void align_block(std::size_t const lhs_block_idx, std::size_t const rhs_block_idx);
@@ -269,11 +277,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		}
 		
 		// Find the correct text position.
-		auto lhs_it(m_lhs_text->begin());
-		auto rhs_it(m_rhs_text->begin());
-		// FIXME: after processing the range, store the iterators for use in the other blocks.
-		std::advance(lhs_it, lhs_idx);
-		std::advance(rhs_it, rhs_idx);
+		auto lhs_it(m_lhs_iterators[lhs_block_idx]);
+		auto rhs_it(m_rhs_iterators[rhs_block_idx]);
 		
 		// Fill output_score_buffer if needed.
 		if (output_score_buffer)
@@ -284,12 +289,13 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		auto const &topmost_row(this->m_rhs->score_samples.column(lhs_block_idx));			// Horizontal.
 		auto const &gap_scores_rhs(this->m_rhs->gap_score_samples.column(lhs_block_idx));	// Horizontal.
 		score_result result((*src_buffer_ptr)[lhs_limit - 1]);
+		auto lhs_it_2(lhs_it); // Copy, needed to store the iterator after the loop.
 		for (std::size_t i(rhs_idx); i < rhs_limit - 1; ++i) // Column
 		{
 			text_align_assert(rhs_it != m_rhs_text->end());
 			
 			auto const rhs_c(*rhs_it);
-			auto lhs_it_2(lhs_it);
+			lhs_it_2 = lhs_it;
 			score_type gap_score_rhs(gap_scores_rhs[1 + i]);
 			
 			// Fill the first row, needed for the first value of prev_diag_score on the next iteration.
@@ -332,6 +338,15 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			++rhs_it;
 		}
 		
+		// Store the left iterator if needed.
+		if (t_initial && 0 == rhs_block_idx && should_calculate_final_row)
+		{
+			++lhs_it_2;
+			auto const it_idx(1 + lhs_block_idx);
+			text_align_assert(it_idx < m_lhs_iterators.size());
+			m_lhs_iterators[it_idx] = lhs_it_2;
+		}
+		
 		// Fill the next sample column and the corner if needed.
 		if (t_initial && should_calculate_final_column)
 		{
@@ -356,6 +371,15 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				calculate_score_and_update_gap_scores <t_initial>(row_idx, column_idx, lhs_it_2, rhs_c, src_buffer_ptr, result, gap_score_rhs);
 				update_lhs_samples(1 + row_idx, 1 + rhs_block_idx, result);
 				update_rhs_samples(1 + column_idx, 1 + lhs_block_idx, result);
+			}
+			
+			// Store the right iterator if needed.
+			if (0 == lhs_block_idx)
+			{
+				++rhs_it;
+				auto const it_idx(1 + rhs_block_idx);
+				text_align_assert(it_idx < m_rhs_iterators.size());
+				m_rhs_iterators[it_idx] = rhs_it;
 			}
 		}
 		

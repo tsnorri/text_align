@@ -211,7 +211,9 @@ namespace text_align { namespace smith_waterman {
 			new detail::aligner_impl <aligner, t_lhs, t_rhs>(
 				*this,
 				lhs,
-				rhs
+				rhs,
+				segments_along_y,
+				segments_along_x
 			)
 		);
 		m_aligner_impl.reset(impl_ptr); // noexcept.
