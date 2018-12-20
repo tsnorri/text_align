@@ -10,6 +10,7 @@
 #include <iostream>
 #include <text_align/algorithm.hh>
 #include <text_align/code_point_iterator.hh>
+#include <text_align/int_vector.hh>
 #include <text_align/matrix.hh>
 #include <text_align/matrix_utils.hh>
 #include <text_align/packed_matrix.hh>
@@ -696,6 +697,38 @@ BOOST_AUTO_TEST_CASE(test_packed_matrix_copy_mid_bits_skip_extra)
 }
 
 
+// Int vector tests
+BOOST_AUTO_TEST_CASE(test_int_vector_push)
+{
+	text_align::int_vector <8> vec;
+	for (std::size_t i(0); i < 10; ++i)
+		vec.push_back(i);
+
+	BOOST_TEST(10 == vec.size());
+	for (std::size_t i(0); i < 10; ++i)
+		BOOST_TEST(i == vec[i]);
+	
+	std::size_t i(0);
+	for (auto const val : vec)
+		BOOST_TEST(i++ == val);
+}
+
+
+BOOST_AUTO_TEST_CASE(test_int_vector_push_multiple)
+{
+	text_align::int_vector <8> vec;
+	vec.push_back(0);
+	
+	vec.push_back(88, 18);
+	
+	BOOST_TEST(19 == vec.size());
+	BOOST_TEST(0 == vec[0]);
+	for (std::size_t i(1); i < 19; ++i)
+		BOOST_TEST(88 == vec[i]);
+}
+
+
+// Aligner tests
 BOOST_AUTO_TEST_CASE(test_aligner_0)
 {
 	typedef alignment_context_type <std::uint16_t> alignment_context;
