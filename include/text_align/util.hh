@@ -56,6 +56,30 @@ namespace text_align { namespace detail {
 				return lhs <= rhs;
 		}
 	};
+	
+	
+	template <unsigned int t_length_diff>
+	struct fill_bit_pattern_helper
+	{
+		template <unsigned int t_pattern_length, typename t_word>
+		static constexpr t_word fill_bit_pattern(t_word pattern)
+		{
+			pattern |= pattern << t_pattern_length;
+		
+			typedef fill_bit_pattern_helper <CHAR_BIT * sizeof(t_word) - 2 * t_pattern_length> helper;
+			return helper::template fill_bit_pattern <2 * t_pattern_length>(pattern);
+		}
+	};
+	
+	template <>
+	struct fill_bit_pattern_helper <0>
+	{
+		template <unsigned int t_pattern_length, typename t_word>
+		static constexpr t_word fill_bit_pattern(t_word pattern)
+		{
+			return pattern;
+		}
+	};
 }}
 
 
@@ -65,6 +89,14 @@ namespace text_align {
 	
 	template <typename t_lhs, typename t_rhs>
 	inline bool check_lte(t_lhs &&lhs, t_rhs &&rhs) { return detail::lte <t_lhs, t_rhs>::check(std::forward <t_lhs>(lhs), std::forward <t_rhs>(rhs)); }
+	
+	
+	template <unsigned int t_pattern_length, typename t_word>
+	constexpr t_word fill_bit_pattern(t_word pattern)
+	{
+		typedef detail::fill_bit_pattern_helper <CHAR_BIT * sizeof(t_word) - t_pattern_length> helper;
+		return helper::template fill_bit_pattern <t_pattern_length>(pattern);
+	}
 }
 
 #endif

@@ -11,40 +11,6 @@
 #include <text_align/packed_matrix_fwd.hh>
 
 
-namespace text_align { namespace matrices { namespace detail {
-	
-	template <unsigned int t_length_diff>
-	struct fill_bit_pattern_helper
-	{
-		template <unsigned int t_pattern_length, typename t_word>
-		static constexpr t_word fill_bit_pattern(t_word pattern)
-		{
-			pattern |= pattern << t_pattern_length;
-			
-			typedef fill_bit_pattern_helper <CHAR_BIT * sizeof(t_word) - 2 * t_pattern_length> helper;
-			return helper::template fill_bit_pattern <2 * t_pattern_length>(pattern);
-		}
-	};
-	
-	template <>
-	struct fill_bit_pattern_helper <0>
-	{
-		template <unsigned int t_pattern_length, typename t_word>
-		static constexpr t_word fill_bit_pattern(t_word pattern)
-		{
-			return pattern;
-		}
-	};
-	
-	template <unsigned int t_pattern_length, typename t_word>
-	constexpr t_word fill_bit_pattern(t_word pattern)
-	{
-		typedef fill_bit_pattern_helper <CHAR_BIT * sizeof(t_word) - t_pattern_length> helper;
-		return helper::template fill_bit_pattern <t_pattern_length>(pattern);
-	}
-}}}
-
-
 namespace text_align { namespace matrices {
 	
 #if 0
@@ -185,7 +151,7 @@ namespace text_align { namespace matrices {
 		typename t_matrix::word_type pattern
 	)
 	{
-		pattern = detail::fill_bit_pattern <t_pattern_length>(pattern);
+		pattern = ::text_align::fill_bit_pattern <t_pattern_length>(pattern);
 		auto word_range(column.to_word_range());
 		word_range.apply_parts(
 			[pattern](auto &atomic){ do_and_assert_eq(atomic.fetch_or(pattern), 0); },
