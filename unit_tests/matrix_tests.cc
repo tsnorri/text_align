@@ -288,7 +288,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_slice_min_column, T, all_test_types)
 BOOST_AUTO_TEST_CASE(test_reverse_bits_1)
 {
 	std::uint64_t const val(0xf0f0f0f0f0f0f0f0UL);
-	std::uint64_t const reversed(text_align::reverse_bits(val));
+	std::uint64_t const reversed(text_align::reverse_bits <1>(val));
 	BOOST_TEST(0x0f0f0f0f0f0f0f0f == reversed);
 }
 
@@ -296,7 +296,7 @@ BOOST_AUTO_TEST_CASE(test_reverse_bits_1)
 BOOST_AUTO_TEST_CASE(test_reverse_bits_2)
 {
 	std::uint64_t const val(0xf0f0f0f0UL);
-	std::uint64_t const reversed(text_align::reverse_bits(val));
+	std::uint64_t const reversed(text_align::reverse_bits <1>(val));
 	BOOST_TEST(0x0f0f0f0f00000000 == reversed);
 }
 
@@ -304,7 +304,7 @@ BOOST_AUTO_TEST_CASE(test_reverse_bits_2)
 BOOST_AUTO_TEST_CASE(test_reverse_bits_3)
 {
 	std::uint64_t const val(0xff7f3f1f0f070301UL);
-	std::uint64_t const reversed(text_align::reverse_bits(val));
+	std::uint64_t const reversed(text_align::reverse_bits <1>(val));
 	BOOST_TEST(0x80c0e0f0f8fcfeff == reversed);
 }
 
