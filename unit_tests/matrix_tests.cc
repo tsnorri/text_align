@@ -14,6 +14,7 @@
 #include <text_align/matrix.hh>
 #include <text_align/matrix_utils.hh>
 #include <text_align/packed_matrix.hh>
+#include <text_align/rle_bit_vector.hh>
 #include <text_align/smith_waterman/aligner.hh>
 #include <text_align/smith_waterman/alignment_context.hh>
 
@@ -740,6 +741,38 @@ BOOST_AUTO_TEST_CASE(test_int_vector_reverse)
 	std::size_t i(0);
 	for (auto const val : vec)
 		BOOST_TEST(9 - i++ == val);
+}
+
+
+// RLE bit vector
+BOOST_AUTO_TEST_CASE(test_rle_bit_vector_push)
+{
+	text_align::rle_bit_vector <std::uint32_t> vec;
+	for (std::size_t i(0); i < 10; ++i)
+		vec.push_back(i % 2, i + 1);
+	
+	BOOST_TEST(vec.starts_with_zero());
+	std::size_t i(0);
+	for (auto const val : vec.const_runs())
+		BOOST_TEST(val == ++i);
+}
+
+
+BOOST_AUTO_TEST_CASE(test_rle_bit_vector_push_same)
+{
+	text_align::rle_bit_vector <std::uint32_t> vec;
+	
+	vec.push_back(0, 5);
+	vec.push_back(0, 2);
+	vec.push_back(1, 3);
+	vec.push_back(1, 1);
+	
+	BOOST_TEST(vec.starts_with_zero());
+	
+	std::size_t i(0);
+	auto const expected(text_align::make_array <std::uint32_t>(7U, 4U));
+	for (auto const val : vec.const_runs())
+		BOOST_TEST(val == expected[i++]);
 }
 
 
