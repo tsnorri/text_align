@@ -6,9 +6,6 @@
 #ifndef TEXT_ALIGN_ALGORITHM_HH
 #define TEXT_ALIGN_ALGORITHM_HH
 
-#define BOOST_DYNAMIC_BITSET_DONT_USE_FRIENDS 1	// XXX Hack: the bitset does not provide access to the blocks.
-#include <boost/dynamic_bitset.hpp>
-
 #include <iostream>
 #include <text_align/assert.hh>
 #include <type_traits>
@@ -108,31 +105,6 @@ namespace text_align {
 	}
 	
 	
-	template <typename t_word>
-	inline void reverse_bitset(boost::dynamic_bitset <t_word> &bs)
-	{
-		// Reverse the order of the blocks.
-		std::reverse(bs.m_bits.begin(), bs.m_bits.end());
-
-		// Reverse the contents of each block.
-		for (auto &word : bs.m_bits)
-		{
-			std::uint64_t const reversed(reverse_bits <1>(word));
-			word = reversed;
-		}
-
-		// Shift by the amount of tailing zeros in the original last block.
-		// If there is only one block, shift just that block since dynamic_bitset
-		// would like to reset itself.
-		auto const size(bs.size());
-		auto const shift(64 - size % 64);
-		if (1 == bs.m_bits.size())
-			bs.m_bits.front() >>= shift;
-		else
-			bs >>= shift;
-	}
-	
-	
 	template <typename t_enum>
 	constexpr std::underlying_type_t <t_enum> to_underlying(t_enum const en)
 	{
@@ -193,6 +165,7 @@ namespace text_align {
 	}
 	
 	
+	// FIXME: move to util.hh
 	// Simpler variant of std::experimental::make_array.
 	template <typename t_value, typename ... t_args>
 	constexpr auto make_array(t_args && ... args) -> std::array <t_value, sizeof...(t_args)>
@@ -201,6 +174,7 @@ namespace text_align {
 	}
 	
 	
+	// FIXME: move to util.hh
 	template <typename t_coll>
 	void resize_and_fill_each(t_coll &vec_collection, std::size_t const size)
 	{
@@ -212,6 +186,7 @@ namespace text_align {
 	}
 	
 	
+	// FIXME: move to util.hh
 	template <typename t_vec>
 	void resize_and_zero(t_vec &vec, std::size_t const size)
 	{
@@ -224,44 +199,6 @@ namespace text_align {
 	constexpr auto min(t_lhs const &lhs, t_rhs const &rhs) -> std::common_type_t <t_lhs, t_rhs>
 	{
 		return std::min <std::common_type_t <t_lhs, t_rhs>>(lhs, rhs);
-	}
-	
-	
-	template <typename t_block>
-	void append_bits(boost::dynamic_bitset <t_block> &dst, std::size_t const bit_count, bool const val)
-	{
-		auto const block_bits(sizeof(t_block) * CHAR_BIT);
-		
-		// Fill with full blocks.
-		{
-			t_block block(0);
-			if (val)
-				--block;
-			
-			for (std::size_t i(0), count(bit_count / block_bits); i < count; ++i)
-				dst.append(block);
-		}
-		
-		// Add the remaining block.
-		auto const remaining_count(bit_count % block_bits);
-		text_align_assert(remaining_count < block_bits);
-		if (remaining_count)
-		{
-			t_block block(0);
-			if (val)
-			{
-				block = 1;
-				block <<= remaining_count;
-				--block;
-			}
-			
-			dst.append(block);
-			
-			// Remove the extra bits.
-			auto const extra_count(block_bits - remaining_count);
-			auto const actual_size(dst.size() - extra_count);
-			dst.resize(actual_size);
-		}
 	}
 }
 
