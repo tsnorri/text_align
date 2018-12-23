@@ -19,8 +19,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 	class matrix_printer
 	{
 	public:
-		typedef aligner_base::bit_vector		bit_vector;
-		typedef aligner_base::arrow_type		arrow_type;
+		typedef aligner_base::arrow_type	arrow_type;
 		
 	protected:
 		packed_matrix <1, std::uint64_t>	m_path;

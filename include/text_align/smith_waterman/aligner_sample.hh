@@ -21,7 +21,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		typedef typename t_aligner::score_matrix				score_matrix;
 		typedef typename t_aligner::traceback_matrix			traceback_matrix;
 		typedef typename t_aligner::gap_start_position_matrix	gap_start_position_matrix;
-		typedef aligner_base::bit_vector						bit_vector;
+		typedef typename t_aligner::bit_vector					bit_vector;
 		
 		score_matrix				score_samples;				// Sample vectors.
 		score_matrix				gap_score_samples;			// Sample vectors for gap start position scores.

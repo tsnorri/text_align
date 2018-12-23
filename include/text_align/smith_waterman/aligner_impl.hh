@@ -473,8 +473,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 					case find_gap_type::LEFT:
 					{
 						bool const res(this->find_gap_start_x(j, i, steps));
-						append_bits(this->m_lhs->gaps, steps, 1);
-						append_bits(this->m_rhs->gaps, steps, 0);
+						this->m_lhs->gaps.push_back(1, steps);
+						this->m_rhs->gaps.push_back(0, steps);
 						if (!res)
 						{
 							text_align_assert(rhs_block_idx);
@@ -488,8 +488,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 					case find_gap_type::UP:
 					{
 						bool const res(this->find_gap_start_y(j, i, steps));
-						append_bits(this->m_lhs->gaps, steps, 0);
-						append_bits(this->m_rhs->gaps, steps, 1);
+						this->m_lhs->gaps.push_back(0, steps);
+						this->m_rhs->gaps.push_back(1, steps);
 						if (!res)
 						{
 							text_align_assert(lhs_block_idx);
@@ -560,8 +560,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 					{
 						// Move left as long as possible and to the adjacent block if needed.
 						bool const res(this->find_gap_start_x(j, i, steps));
-						append_bits(this->m_lhs->gaps, steps, 1);
-						append_bits(this->m_rhs->gaps, steps, 0);
+						this->m_lhs->gaps.push_back(1, steps);
+						this->m_rhs->gaps.push_back(0, steps);
 						if (!res)
 						{
 							text_align_assert(rhs_block_idx);
@@ -578,8 +578,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 					{
 						// Move up as long as possible and to the adjacent block if needed.
 						bool const res(this->find_gap_start_y(j, i, steps));
-						append_bits(this->m_lhs->gaps, steps, 0);
-						append_bits(this->m_rhs->gaps, steps, 1);
+						this->m_lhs->gaps.push_back(0, steps);
+						this->m_rhs->gaps.push_back(1, steps);
 						if (!res)
 						{
 							text_align_assert(lhs_block_idx);
@@ -649,8 +649,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		}
 
 		// Reverse the paths.
-		reverse_bitset(this->m_lhs->gaps);
-		reverse_bitset(this->m_rhs->gaps);
+		this->m_lhs->gaps.reverse();
+		this->m_rhs->gaps.reverse();
 	}
 	
 	

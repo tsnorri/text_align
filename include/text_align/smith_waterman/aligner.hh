@@ -11,6 +11,7 @@
 #include <atomic>
 #include <boost/asio.hpp>
 #include <memory>
+#include <text_align/int_vector.hh>
 #include <text_align/matrix.hh>
 #include <text_align/smith_waterman/aligner_base.hh>
 #include <text_align/smith_waterman/aligner_data.hh>
@@ -25,7 +26,7 @@ namespace std { using ::std::experimental::is_detected_v; }
 
 namespace text_align { namespace smith_waterman {
 	
-	template <typename t_score, typename t_word, typename t_delegate>
+	template <typename t_score, typename t_word, typename t_delegate, typename t_bit_vector = bit_vector>
 	class aligner final : public aligner_base
 	{
 		static_assert(std::is_integral_v <t_score>, "Expected t_score to be a signed integer type.");
@@ -35,7 +36,7 @@ namespace text_align { namespace smith_waterman {
 		friend detail::aligner_sample <aligner>;
 		
 	public:
-		typedef aligner_base::bit_vector				bit_vector;
+		typedef t_bit_vector							bit_vector;
 		typedef t_delegate								delegate_type;
 		typedef boost::asio::io_context					context_type;
 
@@ -129,8 +130,13 @@ namespace text_align { namespace smith_waterman {
 	};
 	
 	
-	template <typename t_score, typename t_word, typename t_delegate>
-	void aligner <t_score, t_word, t_delegate>::did_calculate_score(std::size_t const row, std::size_t const column, score_result const &result, bool const initial)
+	template <typename t_score, typename t_word, typename t_delegate, typename t_bit_vector>
+	void aligner <t_score, t_word, t_delegate, t_bit_vector>::did_calculate_score(
+		std::size_t const row,
+		std::size_t const column,
+		score_result const &result,
+		bool const initial
+	)
 	{
 		// Call the delegate if it has a suitable member function.
 		if constexpr (std::is_detected_v <did_calculate_score_t, t_delegate>)
@@ -138,8 +144,8 @@ namespace text_align { namespace smith_waterman {
 	}
 	
 	
-	template <typename t_score, typename t_word, typename t_delegate>
-	void aligner <t_score, t_word, t_delegate>::finish(score_type const final_score)
+	template <typename t_score, typename t_word, typename t_delegate, typename t_bit_vector>
+	void aligner <t_score, t_word, t_delegate, t_bit_vector>::finish(score_type const final_score)
 	{
 		m_alignment_score = final_score;
 		m_aligner_impl.reset();
@@ -148,18 +154,18 @@ namespace text_align { namespace smith_waterman {
 	
 	
 	// Align the given strings.
-	template <typename t_score, typename t_word, typename t_delegate>
+	template <typename t_score, typename t_word, typename t_delegate, typename t_bit_vector>
 	template <typename t_lhs, typename t_rhs>
-	void aligner <t_score, t_word, t_delegate>::align(t_lhs const &lhs, t_rhs const &rhs)
+	void aligner <t_score, t_word, t_delegate, t_bit_vector>::align(t_lhs const &lhs, t_rhs const &rhs)
 	{
 		align(lhs, rhs, lhs.size(), rhs.size());
 	}
 	
 	
 	// Align the given strings.
-	template <typename t_score, typename t_word, typename t_delegate>
+	template <typename t_score, typename t_word, typename t_delegate, typename t_bit_vector>
 	template <typename t_lhs, typename t_rhs>
-	void aligner <t_score, t_word, t_delegate>::align(
+	void aligner <t_score, t_word, t_delegate, t_bit_vector>::align(
 		t_lhs const &lhs,
 		t_rhs const &rhs,
 		std::size_t const lhs_len,

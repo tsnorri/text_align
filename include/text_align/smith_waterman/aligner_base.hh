@@ -16,8 +16,6 @@ namespace text_align { namespace smith_waterman {
 	struct aligner_base
 	{
 	public:
-		typedef boost::dynamic_bitset <std::uint64_t>	bit_vector;
-		
 		enum arrow_type : std::uint8_t
 		{
 			ARROW_DIAGONAL	= 0x0,

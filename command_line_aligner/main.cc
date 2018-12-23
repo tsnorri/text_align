@@ -11,6 +11,7 @@
 #include <iostream>
 #include <string>
 #include <text_align/code_point_iterator.hh>
+#include <text_align/int_vector.hh>
 #include <text_align/map_on_stack.hh>
 #include <text_align/mmap_handle.hh>
 #include <text_align/smith_waterman/aligner.hh>
@@ -165,8 +166,8 @@ std::size_t copy_distance(t_range range)
 }
 
 
-template <typename t_range, typename t_block>
-void print_aligned(t_range const &range, boost::dynamic_bitset <t_block> const &gaps)
+template <typename t_range>
+void print_aligned(t_range const &range, ta::bit_vector const &gaps)
 {
 	//text_align_assert(str.size() <= gaps.size());
 	
@@ -176,10 +177,9 @@ void print_aligned(t_range const &range, boost::dynamic_bitset <t_block> const &
 	auto ostream_it(std::ostream_iterator <char>(std::cout, ""));
 	// std::ostream_iterator's operator++ is a no-op, hence we don't
 	// save the output value from utf_traits nor use it in else.
-	// boost::dynamic_bitset does not have iterators, so use operator[].
-	for (std::size_t i(0), count(gaps.size()); i < count; ++i)
+	for (auto const val : gaps)
 	{
-		if (0 == gaps[i])
+		if (0 == val)
 		{
 			text_align_assert(it != end);
 			boost::locale::utf::utf_traits <char>::encode(*it++, ostream_it);
@@ -287,7 +287,7 @@ void process_input(boost::asio::io_context &pool, gengetopt_args_info const &arg
 				tested_aligner_delegate td(pool);
 				td.set_scores(ad.scores());
 				
-				ta::smith_waterman::aligner_base::bit_vector lhs_expected_gaps, rhs_expected_gaps;
+				typename verifying_aligner_type::bit_vector lhs_expected_gaps, rhs_expected_gaps;
 				
 				{
 					verifying_aligner_type verifying_aligner(pool, ad);
