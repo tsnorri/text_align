@@ -6,10 +6,13 @@
 #ifndef TEXT_ALIGN_INT_VECTOR_HH
 #define TEXT_ALIGN_INT_VECTOR_HH
 
+#include <boost/iterator/iterator_facade.hpp>
+#include <cmath>
 #include <range/v3/algorithm/copy.hpp>
 #include <range/v3/view/sliding.hpp>
 #include <range/v3/view/transform.hpp>
 #include <text_align/algorithm.hh>
+#include <text_align/util.hh>
 #include <vector>
 
 
@@ -175,6 +178,8 @@ namespace text_align {
 		typedef typename value_vector::reference						word_reference;
 		typedef typename value_vector::iterator							word_iterator;
 		typedef typename value_vector::const_iterator					const_word_iterator;
+		typedef typename value_vector::reverse_iterator					reverse_word_iterator;
+		typedef typename value_vector::const_reverse_iterator			const_reverse_word_iterator;
 		
 		typedef detail::int_vector_value_reference <int_vector>			reference_proxy;
 		typedef reference_proxy											reference;
@@ -193,12 +198,28 @@ namespace text_align {
 		value_vector	m_values;
 		std::size_t		m_size{};
 		
+	protected:
+		static inline word_type extent_mask(std::size_t const extent_size);
+		static inline word_type extent_mask(std::size_t const extent_size, word_type const mask);
+		
 	public:
 		int_vector() = default;
 		explicit int_vector(std::size_t const size):
-			m_values(std::ceil(1.0 * size / ELEMENT_COUNT)),
+			m_values(std::ceil(1.0 * size / ELEMENT_COUNT), 0),
 			m_size(size)
 		{
+		}
+		
+		int_vector(std::size_t const size, word_type const val):
+			m_values(std::ceil(1.0 * size / ELEMENT_COUNT), fill_bit_pattern <ELEMENT_BITS>(val)),
+			m_size(size)
+		{
+			auto const extent_size(size % ELEMENT_COUNT);
+			if (extent_size)
+			{
+				auto const last_element_mask(extent_mask(extent_size, val));
+				*m_values.rbegin() = last_element_mask;
+			}
 		}
 		
 		// Primitives.
@@ -245,10 +266,19 @@ namespace text_align {
 		const_word_iterator word_end() const { return m_values.end(); }
 		const_word_iterator word_cbegin() const { return m_values.cbegin(); }
 		const_word_iterator word_cend() const { return m_values.cend(); }
+		reverse_word_iterator word_rbegin() { return m_values.rbegin(); }
+		reverse_word_iterator word_rend() { return m_values.rend(); }
+		const_reverse_word_iterator word_rbegin() const { return m_values.rbegin(); }
+		const_reverse_word_iterator word_rend() const { return m_values.rend(); }
+		const_reverse_word_iterator word_crbegin() const { return m_values.crbegin(); }
+		const_reverse_word_iterator word_crend() const { return m_values.crend(); }
 		
 		// Additional helpers.
 		void push_back(word_type mask, std::size_t count = 1);
 		void reverse();
+		void clear() { m_values.clear(); m_size = 0; }
+		
+		bool operator==(int_vector const &other) const;
 	};
 	
 	
@@ -260,6 +290,23 @@ namespace text_align {
 	{
 		ranges::copy(vec | ranges::view::transform([](auto val){ return +val; }), ranges::make_ostream_joiner(os, "\t"));
 		return os;
+	}
+	
+	
+	template <unsigned int t_bits, typename t_word>
+	auto int_vector <t_bits, t_word>::extent_mask(std::size_t const size) -> word_type
+	{
+		text_align_assert(size <= ELEMENT_COUNT);
+		word_type const mask(~word_type(0));
+		return mask >> ((ELEMENT_COUNT - size) * ELEMENT_BITS);
+	}
+	
+	
+	template <unsigned int t_bits, typename t_word>
+	auto int_vector <t_bits, t_word>::extent_mask(std::size_t const size, word_type const mask) -> word_type
+	{
+		text_align_assert(size <= ELEMENT_COUNT);
+		return fill_bit_pattern <ELEMENT_BITS>(mask) >> ((ELEMENT_COUNT - size) * ELEMENT_BITS);
 	}
 	
 	
@@ -396,6 +443,27 @@ namespace text_align {
 			pair[0] |= (pair[1] << shift_left);
 		}
 		*m_values.rbegin() >>= shift_right;
+	}
+	
+	
+	template <unsigned int t_bits, typename t_word>
+	bool int_vector <t_bits, t_word>::operator==(int_vector const &other) const
+	{
+		if (m_size != other.m_size)
+			return false;
+		
+		auto const extent_size(m_size % ELEMENT_COUNT);
+		if (0 == extent_size)
+			return m_values == other.m_values;
+		
+		text_align_assert(m_values.size());
+		text_align_assert(other.m_values.size());
+		
+		if (!std::equal(m_values.cbegin(), m_values.cend() - 1, other.m_values.cbegin(), other.m_values.cend() - 1))
+			return false;
+		
+		auto const mask(extent_mask(extent_size));
+		return (*m_values.crbegin() & mask) == (*other.m_values.crbegin() & mask);
 	}
 }
 
