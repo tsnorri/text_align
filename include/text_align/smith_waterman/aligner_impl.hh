@@ -473,8 +473,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 					case find_gap_type::LEFT:
 					{
 						bool const res(this->find_gap_start_x(j, i, steps));
-						this->m_lhs->gaps.push_back(1, steps);
-						this->m_rhs->gaps.push_back(0, steps);
+						this->push_lhs(1, steps);
+						this->push_rhs(0, steps);
 						if (!res)
 						{
 							text_align_assert(rhs_block_idx);
@@ -488,8 +488,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 					case find_gap_type::UP:
 					{
 						bool const res(this->find_gap_start_y(j, i, steps));
-						this->m_lhs->gaps.push_back(0, steps);
-						this->m_rhs->gaps.push_back(1, steps);
+						this->push_lhs(0, steps);
+						this->push_rhs(1, steps);
 						if (!res)
 						{
 							text_align_assert(lhs_block_idx);
@@ -516,8 +516,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				{
 					case arrow_type::ARROW_DIAGONAL:
 						// No gaps.
-						this->m_lhs->gaps.push_back(0);
-						this->m_rhs->gaps.push_back(0);
+						this->push_lhs(0, 1);
+						this->push_rhs(0, 1);
 						
 						// If either co-ordinate is zero, move to the adjacent block.
 						if (! (i && j))
@@ -560,8 +560,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 					{
 						// Move left as long as possible and to the adjacent block if needed.
 						bool const res(this->find_gap_start_x(j, i, steps));
-						this->m_lhs->gaps.push_back(1, steps);
-						this->m_rhs->gaps.push_back(0, steps);
+						this->push_lhs(1, steps);
+						this->push_rhs(0, steps);
 						if (!res)
 						{
 							text_align_assert(rhs_block_idx);
@@ -578,8 +578,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 					{
 						// Move up as long as possible and to the adjacent block if needed.
 						bool const res(this->find_gap_start_y(j, i, steps));
-						this->m_lhs->gaps.push_back(0, steps);
-						this->m_rhs->gaps.push_back(1, steps);
+						this->push_lhs(0, steps);
+						this->push_rhs(1, steps);
 						if (!res)
 						{
 							text_align_assert(lhs_block_idx);
@@ -649,8 +649,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		}
 
 		// Reverse the paths.
-		this->m_lhs->gaps.reverse();
-		this->m_rhs->gaps.reverse();
+		this->reverse_gaps();
 	}
 	
 	

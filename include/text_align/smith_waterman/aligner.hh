@@ -26,7 +26,7 @@ namespace std { using ::std::experimental::is_detected_v; }
 
 namespace text_align { namespace smith_waterman {
 	
-	template <typename t_score, typename t_word, typename t_delegate, typename t_bit_vector = bit_vector>
+	template <typename t_score, typename t_word, typename t_delegate>
 	class aligner final : public aligner_base
 	{
 		static_assert(std::is_integral_v <t_score>, "Expected t_score to be a signed integer type.");
@@ -36,7 +36,6 @@ namespace text_align { namespace smith_waterman {
 		friend detail::aligner_sample <aligner>;
 		
 	public:
-		typedef t_bit_vector							bit_vector;
 		typedef t_delegate								delegate_type;
 		typedef boost::asio::io_context					context_type;
 
@@ -81,6 +80,9 @@ namespace text_align { namespace smith_waterman {
 		>;
 		
 		inline void did_calculate_score(std::size_t const row, std::size_t const column, score_result const &result, bool const initial);
+		inline void push_lhs(bool const flag, std::size_t const count) { this->m_delegate->push_lhs(flag, count); }
+		inline void push_rhs(bool const flag, std::size_t const count) { this->m_delegate->push_rhs(flag, count); }
+		inline void reverse_gaps() { this->m_delegate->reverse_gaps(); }
 		inline void finish(score_type const final_score);
 		
 	public:
@@ -122,16 +124,11 @@ namespace text_align { namespace smith_waterman {
 		);
 		
 		score_type alignment_score() const { return m_alignment_score; };
-		
-		bit_vector &lhs_gaps() { return m_lhs.gaps; };
-		bit_vector &rhs_gaps() { return m_rhs.gaps; };
-		bit_vector const &lhs_gaps() const { return m_lhs.gaps; };
-		bit_vector const &rhs_gaps() const { return m_rhs.gaps; };
 	};
 	
 	
-	template <typename t_score, typename t_word, typename t_delegate, typename t_bit_vector>
-	void aligner <t_score, t_word, t_delegate, t_bit_vector>::did_calculate_score(
+	template <typename t_score, typename t_word, typename t_delegate>
+	void aligner <t_score, t_word, t_delegate>::did_calculate_score(
 		std::size_t const row,
 		std::size_t const column,
 		score_result const &result,
@@ -144,8 +141,8 @@ namespace text_align { namespace smith_waterman {
 	}
 	
 	
-	template <typename t_score, typename t_word, typename t_delegate, typename t_bit_vector>
-	void aligner <t_score, t_word, t_delegate, t_bit_vector>::finish(score_type const final_score)
+	template <typename t_score, typename t_word, typename t_delegate>
+	void aligner <t_score, t_word, t_delegate>::finish(score_type const final_score)
 	{
 		m_alignment_score = final_score;
 		m_aligner_impl.reset();
@@ -154,24 +151,26 @@ namespace text_align { namespace smith_waterman {
 	
 	
 	// Align the given strings.
-	template <typename t_score, typename t_word, typename t_delegate, typename t_bit_vector>
+	template <typename t_score, typename t_word, typename t_delegate>
 	template <typename t_lhs, typename t_rhs>
-	void aligner <t_score, t_word, t_delegate, t_bit_vector>::align(t_lhs const &lhs, t_rhs const &rhs)
+	void aligner <t_score, t_word, t_delegate>::align(t_lhs const &lhs, t_rhs const &rhs)
 	{
 		align(lhs, rhs, lhs.size(), rhs.size());
 	}
 	
 	
 	// Align the given strings.
-	template <typename t_score, typename t_word, typename t_delegate, typename t_bit_vector>
+	template <typename t_score, typename t_word, typename t_delegate>
 	template <typename t_lhs, typename t_rhs>
-	void aligner <t_score, t_word, t_delegate, t_bit_vector>::align(
+	void aligner <t_score, t_word, t_delegate>::align(
 		t_lhs const &lhs,
 		t_rhs const &rhs,
 		std::size_t const lhs_len,
 		std::size_t const rhs_len
 	)
 	{
+		m_delegate->clear_gaps();
+		
 		m_parameters.lhs_length = lhs_len;
 		m_parameters.rhs_length = rhs_len;
 		

@@ -79,6 +79,9 @@ namespace text_align { namespace smith_waterman { namespace detail {
 
 	protected:
 		inline void did_calculate_score(std::size_t const j, std::size_t const i, score_result const &result, bool const initial);
+		inline void push_lhs(bool const flag, std::size_t const count) { this->m_owner->push_lhs(flag, count); }
+		inline void push_rhs(bool const flag, std::size_t const count) { this->m_owner->push_rhs(flag, count); }
+		inline void reverse_gaps() { this->m_owner->reverse_gaps(); }
 		inline void finish() { this->m_owner->finish(m_block_score); }
 	};
 	

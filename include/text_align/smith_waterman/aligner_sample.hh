@@ -21,13 +21,11 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		typedef typename t_aligner::score_matrix				score_matrix;
 		typedef typename t_aligner::traceback_matrix			traceback_matrix;
 		typedef typename t_aligner::gap_start_position_matrix	gap_start_position_matrix;
-		typedef typename t_aligner::bit_vector					bit_vector;
 		
 		score_matrix				score_samples;				// Sample vectors.
 		score_matrix				gap_score_samples;			// Sample vectors for gap start position scores.
 		traceback_matrix			traceback_samples;			// Direction sample vectors.
 		gap_start_position_matrix	gap_start_position_samples;	// Sample vectors for gap start positions.
-		bit_vector					gaps;
 		
 		void init(
 			std::size_t const input_length,
@@ -96,9 +94,6 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		score_type const gap_start_penalty
 	)
 	{
-		// Clear the state.
-		gaps.clear();
-		
 		// Reserve memory for the score samples and the scores.
 		score_samples.resize(1 + input_length, 1 + segments_along_axis);
 		gap_score_samples.resize(1 + input_length, 1 + segments_along_axis);
