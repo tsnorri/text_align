@@ -7,6 +7,7 @@
 #define TEXT_ALIGN_UTIL_HH
 
 #include <boost/format.hpp>
+#include <cstring>
 
 
 #define text_align_stringify(X)		#X
