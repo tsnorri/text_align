@@ -8,8 +8,10 @@
 
 #include <boost/range/combine.hpp>
 #include <cstdint>
+#include <range/v3/view/zip.hpp>
 #include <text_align/algorithm.hh>
 #include <text_align/assert.hh>
+#include <text_align/int_vector.hh>
 #include <text_align/json_serialize.hh>
 #include <vector>
 
@@ -78,7 +80,6 @@ namespace text_align {
 	public:
 		typedef std::unique_ptr <alignment_graph::node_base>	node_ptr;
 		typedef std::vector <node_ptr>							node_ptr_vector;
-		typedef boost::dynamic_bitset <std::uint64_t>			gap_vector;
 		
 	protected:
 		node_ptr_vector	m_text_segments;
@@ -95,7 +96,7 @@ namespace text_align {
 		node_ptr_vector const &text_segments() const { return m_text_segments; }
 		
 		template <typename t_lhs, typename t_rhs>
-		void build_graph(t_lhs const &lhs, t_rhs const &rhs, gap_vector const &lhs_gaps, gap_vector const &rhs_gaps);
+		void build_graph(t_lhs const &lhs, t_rhs const &rhs, bit_vector const &lhs_gaps, bit_vector const &rhs_gaps);
 	};
 }
 
@@ -103,7 +104,7 @@ namespace text_align {
 namespace text_align {
 	
 	template <typename t_lhs, typename t_rhs>
-	void alignment_graph_builder::build_graph(t_lhs const &lhs, t_rhs const &rhs, gap_vector const &lhs_gaps, gap_vector const &rhs_gaps)
+	void alignment_graph_builder::build_graph(t_lhs const &lhs, t_rhs const &rhs, bit_vector const &lhs_gaps, bit_vector const &rhs_gaps)
 	{
 		auto lhs_it(lhs.begin());
 		auto rhs_it(rhs.begin());
@@ -114,11 +115,11 @@ namespace text_align {
 		// append it to a graph node that represents a common segment.
 		// Otherwise, append the characters to a graph node that represents
 		// distinct segments.
-		auto const length(lhs_gaps.size());
-		text_align_assert(length == rhs_gaps.size());
-		for (std::size_t i(0); i < length; ++i)
+		text_align_assert(lhs_gaps.size() == rhs_gaps.size());
+		for (auto const &tup : ranges::view::zip(lhs_gaps, rhs_gaps))
 		{
-			bool lhs_has_gap(lhs_gaps[i]), rhs_has_gap(rhs_gaps[i]);
+			bool const lhs_has_gap(std::get <0>(tup));
+			bool const rhs_has_gap(std::get <1>(tup));
 			
 			text_align_always_assert(! (lhs_has_gap && rhs_has_gap));
 			if (! (lhs_has_gap || rhs_has_gap))
