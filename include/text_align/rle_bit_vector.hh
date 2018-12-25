@@ -100,6 +100,10 @@ namespace text_align {
 		
 		void push_back(bool val, count_type count = 1);
 		void reverse();
+		void clear() { m_values.clear(); }
+		
+		// For Python, re-declaring aliased iterators is tedious.
+		vector_type const &to_run_vector() const { return m_values; }
 	};
 	
 	
