@@ -20,6 +20,13 @@ extern "C" {
 
 namespace {
 	
+	typedef text_align::smith_waterman::alignment_context <
+		std::int32_t,
+		std::uint64_t,
+		text_align::bit_vector
+	> alignment_context_type;
+	
+	
 	void make_string_view(text const *txt, std::string_view &out_sv)
 	{
 		out_sv = std::string_view(VARDATA(txt), VARSIZE(txt) - VARHDRSZ);
@@ -71,7 +78,7 @@ extern "C" {
 			auto const rhs_len(copy_distance(rhsr));
 			
 			// Instantiate the aligner.
-			ta::smith_waterman::alignment_context <std::int32_t, std::uint64_t> ctx;
+			alignment_context_type ctx;
 			auto &aligner(ctx.aligner());
 			aligner.set_identity_score(match_score);
 			aligner.set_mismatch_penalty(mismatch_penalty);
@@ -85,7 +92,7 @@ extern "C" {
 			
 			// Build the alignment graph.
 			ta::alignment_graph_builder builder;
-			builder.build_graph(lhsr, rhsr, aligner.lhs_gaps(), aligner.rhs_gaps());
+			builder.build_graph(lhsr, rhsr, ctx.lhs_gaps(), ctx.rhs_gaps());
 			
 			// Serialize to JSON.
 			std::ostringstream os;
