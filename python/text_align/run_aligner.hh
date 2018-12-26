@@ -9,6 +9,7 @@
 #include <boost/beast/core/span.hpp>
 #include <text_align/alignment_graph_builder.hh>
 #include <text_align/map_on_stack.hh>
+#include <text_align/rle_bit_vector.hh>
 #include <text_align/smith_waterman/aligner.hh>
 
 
@@ -95,17 +96,19 @@ namespace text_align
 	}
 	
 	
-	template <typename t_aligner>
-	void run_builder(alignment_graph_builder &builder, t_aligner const &aligner, PyObject *lhso, PyObject *rhso)
+	template <typename t_aligner_context>
+	void run_builder(alignment_graph_builder &builder, t_aligner_context const &ctx, PyObject *lhso, PyObject *rhso)
 	{
-		// Convert the Python strings to spans.
+		auto &lhs_gaps(ctx.lhs_gaps());
+		auto &rhs_gaps(ctx.rhs_gaps());
+		// Convert the Python strings to spans. Throw if the vectors are not convertible to bit_vectors.
 		text_align::map_on_stack_fn <detail::span_from_buffer>(
-			[&builder, &aligner](auto const &lhss, auto const &rhss) {
+			[&builder, &lhs_gaps, &rhs_gaps](auto const &lhss, auto const &rhss) {
 				builder.build_graph(
 					lhss,
 					rhss,
-					aligner.lhs_gaps(),
-					aligner.rhs_gaps()
+					dynamic_cast <bit_vector const &>(lhs_gaps),
+					dynamic_cast <bit_vector const &>(rhs_gaps)
 				);
 			},
 			lhso, rhso

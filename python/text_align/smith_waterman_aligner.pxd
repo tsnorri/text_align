@@ -4,8 +4,11 @@
 # cython: language_level=3
 
 from libc.stdint cimport uint32_t, uint64_t
+from libc.stddef cimport size_t
 from libcpp cimport bool
 from libcpp.vector cimport vector
+from .bit_vector_interface cimport bit_vector_interface
+from .int_vector cimport bit_vector
 
 
 cdef extern from "<text_align/smith_waterman/aligner.hh>" namespace "text_align::smith_waterman":
@@ -29,17 +32,20 @@ cdef extern from "<text_align/smith_waterman/aligner.hh>" namespace "text_align:
 		void align[t_string](const t_string &, const t_string &)
 		
 		t_score alignment_score() const
-		
-		const vector[bool] &lhs_gaps()
-		const vector[bool] &rhs_gaps()
-		
 
-cdef extern from "<text_align/smith_waterman/alignment_context.hh>" namespace "text_align::smith_waterman":
 
-	cdef cppclass alignment_context[t_score, t_word]:
+cdef extern from "<text_align/smith_waterman/alignment_context_pv.hh>" namespace "text_align::smith_waterman":
+
+	cdef cppclass alignment_context_pv[t_score, t_word]:
 		alignment_context() except +
 		void run() except +
 		void restart() except +
 		bool stopped() except +
 		
-		aligner[t_score, t_word, alignment_context[t_score, t_word]] &aligner()
+		aligner[t_score, t_word, alignment_context_pv[t_score, t_word]] &aligner()
+
+		const bit_vector_interface[t_word] &lhs_gaps() except +
+		const bit_vector_interface[t_word] &rhs_gaps() except +
+
+		void instantiate_lhs_gaps[t_lhs]() except +
+		void instantiate_rhs_gaps[t_rhs]() except +

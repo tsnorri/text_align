@@ -5,11 +5,15 @@
 
 from cython.operator cimport dereference as deref, preincrement as inc
 from libc.stdint cimport uint8_t, int32_t, uint32_t, uint64_t
+from libcpp.cast cimport dynamic_cast
 from libcpp.vector cimport vector
 from .alignment_graph_builder cimport alignment_graph_builder, common_node, distinct_node, COMMON, DISTINCT
 from .alignment_graph_node import CommonNode, DistinctNode
+from .cast_bit_vector cimport cast #to_rle_bit_vector
+from .int_vector cimport bit_vector
+from .rle_bit_vector cimport rle_bit_vector
 from .run_aligner cimport run_aligner, run_builder
-from .smith_waterman_aligner cimport alignment_context
+from .smith_waterman_aligner cimport alignment_context_pv
 
 
 cdef class AlignmentContext(object):
@@ -78,7 +82,7 @@ cdef class SmithWatermanAlignmentContext(AlignmentContext):
 		# In-place construction does not seem to be possible in Cython;
 		# hence the use of operator new.
 		# Apparently super's implementation is called automatically.
-		self.ctx = new alignment_context[int32_t, uint64_t]()
+		self.ctx = new alignment_context_pv[int32_t, uint64_t]()
 
 	def __dealloc__(self):
 		# super's implementation called automatically,
@@ -92,8 +96,38 @@ cdef class SmithWatermanAlignmentContext(AlignmentContext):
 	def make_alignment_graph(self):
 		"""Return the alignment as a graph."""
 		cdef alignment_graph_builder builder
-		run_builder(builder, deref(self.ctx).aligner(), self.lhs, self.rhs)
+		run_builder(builder, deref(self.ctx), self.lhs, self.rhs)
 		return self.make_alignment_graph_from_segments(builder.text_segments())
+
+	cdef convert_rle_vector(self, const rle_bit_vector[uint32_t] &vec_ref):
+		retval = []
+		vec = vec_ref.to_run_vector()
+		it = vec.const_begin()
+		end = vec.const_end()
+		while it != end:
+			retval.append(deref(it))
+			inc(it)
+		return vec_ref.starts_with_zero(), retval
+
+	def make_lhs_runs(self):
+		"""Return the alignment as a vector of runs."""
+		cdef cast[uint32_t] c
+		return self.convert_rle_vector(c.to_rle_bit_vector_fr(self.ctx.lhs_gaps()))
+
+	def make_rhs_runs(self):
+		"""Return the alignment as a vector of runs."""
+		cdef cast[uint32_t] c
+		return self.convert_rle_vector(c.to_rle_bit_vector_fr(self.ctx.rhs_gaps()))
+
+	def setup_bit_vectors(self):
+		"""Use bit vectors for gaps."""
+		self.ctx.instantiate_lhs_gaps[bit_vector]()
+		self.ctx.instantiate_rhs_gaps[bit_vector]()
+
+	def setup_run_vectors(self):
+		"""Use run vectors for gaps."""
+		self.ctx.instantiate_lhs_gaps[rle_bit_vector[uint32_t]]()
+		self.ctx.instantiate_rhs_gaps[rle_bit_vector[uint32_t]]()
 
 	@property
 	def identity_score(self):
