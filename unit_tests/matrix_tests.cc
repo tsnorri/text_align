@@ -42,7 +42,7 @@ typedef std::tuple <
 typedef std::int32_t score_type;
 
 template <typename t_block>
-using alignment_context_type = text_align::smith_waterman::alignment_context <score_type, t_block>;
+using alignment_context_type = text_align::smith_waterman::alignment_context <score_type, t_block, text_align::bit_vector>;
 
 
 template <typename t_value>
@@ -108,8 +108,8 @@ void run_aligner(
 	alignment_context_type <t_block> &ctx,
 	std::string const &lhs,
 	std::string const &rhs,
-	typename alignment_context_type <t_block>::aligner_type::bit_vector const &expected_lhs,
-	typename alignment_context_type <t_block>::aligner_type::bit_vector const &expected_rhs,
+	typename alignment_context_type <t_block>::bit_vector_type const &expected_lhs,
+	typename alignment_context_type <t_block>::bit_vector_type const &expected_rhs,
 	score_type const expected_score,
 	std::size_t const block_size,
 	score_type const match_score,
@@ -137,8 +137,8 @@ void run_aligner(
 	ctx.run();
 	
 	BOOST_TEST(aligner.alignment_score() == expected_score);
-	BOOST_TEST(aligner.lhs_gaps() == expected_lhs);
-	BOOST_TEST(aligner.rhs_gaps() == expected_rhs);
+	BOOST_TEST(ctx.lhs_gaps() == expected_lhs);
+	BOOST_TEST(ctx.rhs_gaps() == expected_rhs);
 }
 
 
@@ -698,7 +698,6 @@ BOOST_AUTO_TEST_CASE(test_packed_matrix_copy_mid_bits_skip_extra)
 }
 
 
-// Int vector tests
 BOOST_AUTO_TEST_CASE(test_int_vector_push)
 {
 	text_align::int_vector <8> vec;
@@ -780,10 +779,10 @@ BOOST_AUTO_TEST_CASE(test_rle_bit_vector_push_same)
 BOOST_AUTO_TEST_CASE(test_aligner_0)
 {
 	typedef alignment_context_type <std::uint16_t> alignment_context;
-	typedef typename alignment_context::aligner_type::bit_vector bit_vector;
+	typedef typename alignment_context::bit_vector_type bit_vector;
 	
 	bit_vector const lhs(4, 0x0);
-	bit_vector const rhs(4, 0x0);
+	bit_vector rhs(4, 0x0);
 	alignment_context ctx;
 	run_aligner(ctx, "asdf", "asdf", lhs, rhs, 8, 8, 2, -2, -2, -1);
 }
@@ -792,10 +791,11 @@ BOOST_AUTO_TEST_CASE(test_aligner_0)
 BOOST_AUTO_TEST_CASE(test_aligner_1)
 {
 	typedef alignment_context_type <std::uint16_t> alignment_context;
-	typedef typename alignment_context::aligner_type::bit_vector bit_vector;
+	typedef typename alignment_context::bit_vector_type bit_vector;
 	
 	bit_vector const lhs(5, 0x0);
-	bit_vector const rhs(5, 0x2);
+	bit_vector rhs(5, 0x0);
+	*rhs.word_begin() = 0x2;
 	alignment_context ctx;
 	run_aligner(ctx, "xaasd", "xasd", lhs, rhs, 4, 8, 2, -2, -2, -1);
 }
@@ -804,10 +804,11 @@ BOOST_AUTO_TEST_CASE(test_aligner_1)
 BOOST_AUTO_TEST_CASE(test_aligner_2_32)
 {
 	typedef alignment_context_type <std::uint32_t> alignment_context;
-	typedef typename alignment_context::aligner_type::bit_vector bit_vector;
+	typedef typename alignment_context::bit_vector_type bit_vector;
 	
 	bit_vector const lhs(10, 0x0);
-	bit_vector const rhs(10, 0x42);
+	bit_vector rhs(10, 0x0);
+	*rhs.word_begin() = 0x42;
 	alignment_context ctx;
 	run_aligner(ctx, "xaasdxaasd", "xasdxasd", lhs, rhs, 8, 16, 2, -2, -2, -1);
 }
@@ -816,10 +817,11 @@ BOOST_AUTO_TEST_CASE(test_aligner_2_32)
 BOOST_AUTO_TEST_CASE(test_aligner_2_16)
 {
 	typedef alignment_context_type <std::uint16_t> alignment_context;
-	typedef typename alignment_context::aligner_type::bit_vector bit_vector;
+	typedef typename alignment_context::bit_vector_type bit_vector;
 	
 	bit_vector const lhs(10, 0x0);
-	bit_vector const rhs(10, 0x42);
+	bit_vector rhs(10, 0x0);
+	*rhs.word_begin() = 0x42;
 	alignment_context ctx;
 	run_aligner(ctx, "xaasdxaasd", "xasdxasd", lhs, rhs, 8, 8, 2, -2, -2, -1);
 }
@@ -828,10 +830,11 @@ BOOST_AUTO_TEST_CASE(test_aligner_2_16)
 BOOST_AUTO_TEST_CASE(test_aligner_2_8)
 {
 	typedef alignment_context_type <std::uint16_t> alignment_context;
-	typedef typename alignment_context::aligner_type::bit_vector bit_vector;
+	typedef typename alignment_context::bit_vector_type bit_vector;
 	
 	bit_vector const lhs(10, 0x0);
-	bit_vector const rhs(10, 0x42);
+	bit_vector rhs(10, 0x0);
+	*rhs.word_begin() = 0x42;
 	alignment_context ctx;
 	run_aligner(ctx, "xaasdxaasd", "xasdxasd", lhs, rhs, 8, 4, 2, -2, -2, -1);
 }
