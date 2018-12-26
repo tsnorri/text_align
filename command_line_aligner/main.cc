@@ -65,6 +65,8 @@ class aligner_delegate
 {
 protected:
 	boost::asio::io_context	*m_pool{};
+	ta::bit_vector m_lhs_gaps;
+	ta::bit_vector m_rhs_gaps;
 	
 public:
 	aligner_delegate() = default;
@@ -73,8 +75,16 @@ public:
 	{
 	}
 	
+	ta::bit_vector const &lhs_gaps() const { return m_lhs_gaps; }
+	ta::bit_vector const &rhs_gaps() const { return m_rhs_gaps; }
+	
 	virtual void will_run_aligner(ta::smith_waterman::aligner_base &aligner, std::size_t const lhs_size, std::size_t const rhs_size) {}
 	void finish(ta::smith_waterman::aligner_base &aligner) { /* m_pool->stop(); */ }
+	
+	void push_lhs(bool flag, std::size_t count) { m_lhs_gaps.push_back(flag, count); }
+	void push_rhs(bool flag, std::size_t count) { m_rhs_gaps.push_back(flag, count); }
+	void clear_gaps() { m_lhs_gaps.clear(); m_rhs_gaps.clear(); }
+	void reverse_gaps() { m_lhs_gaps.reverse(); m_rhs_gaps.reverse(); }
 };
 
 
@@ -263,8 +273,8 @@ void run_aligner(
 		aligner.align(lhsr, rhsr, lhs_len, rhs_len);
 		pool.run();
 		std::cout << "Score: " << aligner.alignment_score() << std::endl;
-		print_aligned(lhsr, aligner.lhs_gaps());
-		print_aligned(rhsr, aligner.rhs_gaps());
+		print_aligned(lhsr, delegate.lhs_gaps());
+		print_aligned(rhsr, delegate.rhs_gaps());
 	}
 }
 
@@ -287,15 +297,11 @@ void process_input(boost::asio::io_context &pool, gengetopt_args_info const &arg
 				tested_aligner_delegate td(pool);
 				td.set_scores(ad.scores());
 				
-				typename verifying_aligner_type::bit_vector lhs_expected_gaps, rhs_expected_gaps;
-				
 				{
 					verifying_aligner_type verifying_aligner(pool, ad);
 					configure_aligner(verifying_aligner, args_info);
 					run_aligner(verifying_aligner, ad, pool, lhsv, rhsv, args_info);
-					lhs_expected_gaps = verifying_aligner.lhs_gaps();
-					rhs_expected_gaps = verifying_aligner.rhs_gaps();
-					text_align_assert(lhs_expected_gaps.size() == rhs_expected_gaps.size());
+					text_align_assert(ad.lhs_gaps().size() == ad.rhs_gaps().size());
 				}
 				
 				tested_aligner_type tested_aligner(pool, td);
@@ -304,8 +310,10 @@ void process_input(boost::asio::io_context &pool, gengetopt_args_info const &arg
 				
 				{
 					// Check the gap vectors.
-					auto const &lhs_gaps(tested_aligner.lhs_gaps());
-					auto const &rhs_gaps(tested_aligner.rhs_gaps());
+					auto const &lhs_expected_gaps(ad.lhs_gaps());
+					auto const &rhs_expected_gaps(ad.rhs_gaps());
+					auto const &lhs_gaps(td.lhs_gaps());
+					auto const &rhs_gaps(td.rhs_gaps());
 					text_align_assert(lhs_gaps.size() == rhs_gaps.size());
 					if (lhs_expected_gaps.size() != lhs_gaps.size())
 						std::cerr << "Traceback lengths do not match. Expected " << lhs_expected_gaps.size() << ", got " << lhs_gaps.size() << ".\n";
