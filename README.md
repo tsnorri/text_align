@@ -2,6 +2,8 @@
 
 The purpose of this library is to provide text alignment for large(ish) constant alphabets; in particular alignment of Unicode code points. Currently, it contains a version of the Smith-Waterman algorithm that attempts to split the dynamic programming matrix into blocks and fill them in parallel.
 
+At this point, the library should be considered experimental.
+
 ## Requirements
 
 - GNU Make
