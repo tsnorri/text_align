@@ -698,6 +698,17 @@ BOOST_AUTO_TEST_CASE(test_packed_matrix_copy_mid_bits_skip_extra)
 }
 
 
+// Int vector tests
+BOOST_AUTO_TEST_CASE(test_int_vector_init)
+{
+	text_align::int_vector <8> vec(9, 0x55);
+	for (std::size_t i(0); i < 9; ++i)
+		BOOST_TEST(0x55 == vec[i]);
+	
+	BOOST_TEST(0x55 == *vec.word_crbegin());
+}
+
+
 BOOST_AUTO_TEST_CASE(test_int_vector_push)
 {
 	text_align::int_vector <8> vec;
