@@ -26,5 +26,8 @@ At this point, the library should be considered experimental.
 
 ## Building
 
+Running make in the project root builds the C++ library, the command line tool and the unit tests. Running `make clean` cleans everything including the PostgreSQL and Python extensions.
+
 1. Edit local.mk. Useful variables include `CC`, `CXX`, `PYTHON`, `EXTRA_CFLAGS`, `EXTRA_CXXFLAGS` and `EXTRA_LDFLAGS`.
 2. Run make.
+3. To build either of the extensions, change to the subdirectory in question and run make.
