@@ -8,10 +8,10 @@
 
 #include <boost/range/combine.hpp>
 #include <cstdint>
+#include <libbio/algorithm.hh>
+#include <libbio/assert.hh>
+#include <libbio/int_vector.hh>
 #include <range/v3/view/zip.hpp>
-#include <text_align/algorithm.hh>
-#include <text_align/assert.hh>
-#include <text_align/int_vector.hh>
 #include <text_align/json_serialize.hh>
 #include <vector>
 
@@ -96,7 +96,7 @@ namespace text_align {
 		node_ptr_vector const &text_segments() const { return m_text_segments; }
 		
 		template <typename t_lhs, typename t_rhs>
-		void build_graph(t_lhs const &lhs, t_rhs const &rhs, bit_vector const &lhs_gaps, bit_vector const &rhs_gaps);
+		void build_graph(t_lhs const &lhs, t_rhs const &rhs, libbio::bit_vector const &lhs_gaps, libbio::bit_vector const &rhs_gaps);
 	};
 }
 
@@ -104,7 +104,7 @@ namespace text_align {
 namespace text_align {
 	
 	template <typename t_lhs, typename t_rhs>
-	void alignment_graph_builder::build_graph(t_lhs const &lhs, t_rhs const &rhs, bit_vector const &lhs_gaps, bit_vector const &rhs_gaps)
+	void alignment_graph_builder::build_graph(t_lhs const &lhs, t_rhs const &rhs, libbio::bit_vector const &lhs_gaps, libbio::bit_vector const &rhs_gaps)
 	{
 		auto lhs_it(lhs.begin());
 		auto rhs_it(rhs.begin());
@@ -115,35 +115,35 @@ namespace text_align {
 		// append it to a graph node that represents a common segment.
 		// Otherwise, append the characters to a graph node that represents
 		// distinct segments.
-		text_align_assert(lhs_gaps.size() == rhs_gaps.size());
+		libbio_assert(lhs_gaps.size() == rhs_gaps.size());
 		for (auto const &tup : ranges::view::zip(lhs_gaps, rhs_gaps))
 		{
 			bool const lhs_has_gap(std::get <0>(tup));
 			bool const rhs_has_gap(std::get <1>(tup));
 			
-			text_align_always_assert(! (lhs_has_gap && rhs_has_gap));
+			libbio_always_assert(! (lhs_has_gap && rhs_has_gap));
 			if (! (lhs_has_gap || rhs_has_gap))
 			{
-				text_align_always_assert(lhs_it != lhs_end);
-				text_align_always_assert(rhs_it != rhs_end);
+				libbio_always_assert(lhs_it != lhs_end);
+				libbio_always_assert(rhs_it != rhs_end);
 				
 				auto const lhsc(*lhs_it++);
 				auto const rhsc(*rhs_it++);
 				
-				if (is_equal(lhsc, rhsc))
+				if (libbio::is_equal(lhsc, rhsc))
 					append_to_common_segment(lhsc);
 				else
 					append_to_distinct_segment(lhsc, rhsc);
 			}
 			else if (lhs_has_gap)
 			{
-				text_align_always_assert(rhs_it != rhs_end);
+				libbio_always_assert(rhs_it != rhs_end);
 				auto const rhsc(*rhs_it++);
 				append_to_distinct_segment(alignment_graph::GAP_CHARACTER, rhsc);
 			}
 			else if (rhs_has_gap)
 			{
-				text_align_always_assert(lhs_it != lhs_end);
+				libbio_always_assert(lhs_it != lhs_end);
 				auto const lhsc(*lhs_it++);
 				append_to_distinct_segment(lhsc, alignment_graph::GAP_CHARACTER);
 			}

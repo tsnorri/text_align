@@ -6,7 +6,7 @@
 #ifndef TEXT_ALIGN_SMITH_WATERMAN_ALIGNER_DATA_HH
 #define TEXT_ALIGN_SMITH_WATERMAN_ALIGNER_DATA_HH
 
-#include <text_align/packed_matrix.hh>
+#include <libbio/packed_matrix.hh>
 
 
 namespace text_align { namespace smith_waterman { namespace detail {
@@ -46,7 +46,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 	{
 		// Initialize the flags.
 		{
-			matrices::initialize_atomic(flags, segments_along_y, segments_along_x);
+			libbio::matrices::initialize_atomic(flags, segments_along_y, segments_along_x);
 			
 			// Set the value of each flag.
 			std::fill(flags.word_begin(), flags.word_end(), 0);
@@ -59,14 +59,14 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			std::for_each(row.begin(), row.end(),		[](auto ref){ ref.fetch_or(0x1); });
 		}
 		
-		resize_and_zero(score_buffer_1, 1 + lhs_len);	// Vertical.
-		resize_and_zero(score_buffer_2, 1 + lhs_len);	// Vertical.
-		resize_and_zero(gap_scores_lhs, 1 + lhs_len);	// Vertical.
+		libbio::resize_and_zero(score_buffer_1, 1 + lhs_len);	// Vertical.
+		libbio::resize_and_zero(score_buffer_2, 1 + lhs_len);	// Vertical.
+		libbio::resize_and_zero(gap_scores_lhs, 1 + lhs_len);	// Vertical.
 		
-		matrices::initialize_atomic(traceback, segment_len, segment_len);
+		libbio::matrices::initialize_atomic(traceback, segment_len, segment_len);
 		std::fill(traceback.word_begin(), traceback.word_end(), 0);
 		
-		matrices::initialize_atomic(gap_start_positions, segment_len, segment_len);
+		libbio::matrices::initialize_atomic(gap_start_positions, segment_len, segment_len);
 		std::fill(gap_start_positions.word_begin(), gap_start_positions.word_end(), 0);
 	}
 }}}

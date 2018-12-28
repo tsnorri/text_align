@@ -54,8 +54,8 @@ namespace text_align {
 	private:
 		void do_advance() const
 		{
-			text_align_assert(m_it == m_next);
-			text_align_assert(m_it != m_end);
+			libbio_assert(m_it == m_next);
+			libbio_assert(m_it != m_end);
 			
 			m_cp = boost::locale::utf::utf_traits <
 				underlying_value_type

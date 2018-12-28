@@ -6,9 +6,8 @@
 #ifndef TEXT_ALIGN_SMITH_WATERMAN_ALIGNER_BASE_HH
 #define TEXT_ALIGN_SMITH_WATERMAN_ALIGNER_BASE_HH
 
-#include <text_align/algorithm.hh>
-
-#include <text_align/matrix.hh>
+#include <libbio/algorithm.hh>
+#include <libbio/matrix.hh>
 
 
 namespace text_align { namespace smith_waterman {
@@ -41,7 +40,7 @@ namespace text_align { namespace smith_waterman {
 	
 	inline aligner_base::gap_start_position_type operator|(aligner_base::gap_start_position_type lhs, aligner_base::gap_start_position_type rhs)
 	{
-		return static_cast <aligner_base::gap_start_position_type>(to_underlying(lhs) | to_underlying(rhs));
+		return static_cast <aligner_base::gap_start_position_type>(libbio::to_underlying(lhs) | libbio::to_underlying(rhs));
 	}
 	
 	inline aligner_base::gap_start_position_type &operator|=(aligner_base::gap_start_position_type &lhs, aligner_base::gap_start_position_type rhs)

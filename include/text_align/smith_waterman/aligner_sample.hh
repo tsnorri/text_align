@@ -6,7 +6,7 @@
 #ifndef TEXT_ALIGN_SMITH_WATERMAN_ALIGNER_SAMPLE_HH
 #define TEXT_ALIGN_SMITH_WATERMAN_ALIGNER_SAMPLE_HH
 
-#include <text_align/packed_matrix.hh>
+#include <libbio/packed_matrix.hh>
 
 
 namespace text_align { namespace smith_waterman { namespace detail {
@@ -107,29 +107,29 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		
 		// Initialize the traceback samples.
 		{
-			matrices::initialize_atomic(traceback_samples, 1 + input_length, 1 + segments_along_axis);
+			libbio::matrices::initialize_atomic(traceback_samples, 1 + input_length, 1 + segments_along_axis);
 			std::fill(traceback_samples.word_begin(), traceback_samples.word_end(), 0);
 			
 			// Fill the first vectors with arrows.
 			auto column(traceback_samples.column(0));
-			matrices::fill_column_with_bit_pattern <2>(column, arrow);
+			libbio::matrices::fill_column_with_bit_pattern <2>(column, arrow);
 			
 			// Add ARROW_FINISH to the corner, make sure that it does not change the previous value.
-			text_align_assert(arrow_type::ARROW_FINISH == (arrow_type::ARROW_FINISH | (column[0] & arrow_type::ARROW_MASK)));
+			libbio_assert(arrow_type::ARROW_FINISH == (arrow_type::ARROW_FINISH | (column[0] & arrow_type::ARROW_MASK)));
 			column[0].fetch_or(arrow_type::ARROW_FINISH);
 		}
 		
 		// Initialize the gap start position samples.
 		{
-			matrices::initialize_atomic(gap_start_position_samples, 1 + input_length, 1 + segments_along_axis);
+			libbio::matrices::initialize_atomic(gap_start_position_samples, 1 + input_length, 1 + segments_along_axis);
 			std::fill(gap_start_position_samples.word_begin(), gap_start_position_samples.word_end(), 0);
 			
 			// Fill the first vector.
 			auto column(gap_start_position_samples.column(0));
-			matrices::fill_column_with_bit_pattern <2>(column, gap_start_position);
+			libbio::matrices::fill_column_with_bit_pattern <2>(column, gap_start_position);
 			
 			// Add GSGT_BOTH to the corner, make sure that it does not change the previous value.
-			text_align_assert(gap_start_position_type::GSP_BOTH == (gap_start_position_type::GSP_BOTH | (column[0] & gap_start_position_type::GSP_MASK)));
+			libbio_assert(gap_start_position_type::GSP_BOTH == (gap_start_position_type::GSP_BOTH | (column[0] & gap_start_position_type::GSP_MASK)));
 			column[0].fetch_or(gap_start_position_type::GSP_BOTH);
 		}
 	}
@@ -147,8 +147,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		for (std::size_t i(1); i < segment_count; ++i)
 		{
 			// Currently this function should only be called when these values have not been set.
-			text_align_assert(0 == score_samples(0, i));
-			text_align_assert(0 == gap_score_samples(0, i));
+			libbio_assert(0 == score_samples(0, i));
+			libbio_assert(0 == gap_score_samples(0, i));
 			
 			score_samples(0, i)		= first_score_sample[i * segment_length];
 			gap_score_samples(0, i)	= first_gap_score_sample[i * segment_length];

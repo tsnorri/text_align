@@ -23,7 +23,7 @@ namespace {
 	typedef text_align::smith_waterman::alignment_context <
 		std::int32_t,
 		std::uint64_t,
-		text_align::bit_vector
+		libbio::bit_vector
 	> alignment_context_type;
 	
 	
@@ -48,6 +48,7 @@ extern "C" {
 	PG_FUNCTION_INFO_V1(align_texts);
 	Datum align_texts(PG_FUNCTION_ARGS)
 	{
+		namespace lb = libbio;
 		namespace ta = text_align;
 		
 		if (6 != PG_NARGS())

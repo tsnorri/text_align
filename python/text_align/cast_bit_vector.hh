@@ -6,8 +6,8 @@
 #ifndef TEXT_ALIGN_CAST_BIT_VECTOR_HH
 #define TEXT_ALIGN_CAST_BIT_VECTOR_HH
 
+#include <libbio/rle_bit_vector.hh>
 #include <text_align/bit_vector_interface.hh>
-#include <text_align/rle_bit_vector.hh>
 
 
 namespace text_align {
@@ -19,9 +19,9 @@ namespace text_align {
 	struct cast
 	{
 		template <typename t_bv>
-		inline rle_bit_vector <t_word> const &to_rle_bit_vector_fr(t_bv &bv)
+		inline libbio::rle_bit_vector <t_word> const &to_rle_bit_vector_fr(t_bv &bv)
 		{
-			return dynamic_cast <rle_bit_vector <t_word> const &>(*(bv.operator &()));
+			return dynamic_cast <libbio::rle_bit_vector <t_word> const &>(*(bv.operator &()));
 		}
 	};
 }

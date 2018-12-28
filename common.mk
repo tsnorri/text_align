@@ -2,24 +2,29 @@ INCLUDE_DIRS	?=
 LIB_DIRS		?=
 LIBRARIES		?=
 
-EXTRA_CXXFLAGS	?=
-EXTRA_LDFLAGS	?=
-EXTRA_CFLAGS	?=
-
 CC				?= cc
 CXX				?= c++
 GENGETOPT		?= gengetopt
 PYTHON			?= python
 PG_CONFIG		?= pg_config
+GRUNT			?= grunt
+YARN			?= yarn
 
-INCLUDE_DIRS	+= ../include ../lib/range-v3/include
+WARNING_FLAGS	?=
+OPT_FLAGS		?=
+
+PYTHON_CFLAGS	?=
+PYTHON_CXXFLAGS	?=
+PYTHON_LDFLAGS	?=
+
+INCLUDE_DIRS	+= ../include ../lib/libbio/include ../lib/libbio/lib/range-v3/include ../lib/libbio/lib/GSL/include
 LIBRARIES		+= boost_system-mt
 
-EXTRA_CXXFLAGS	+= -std=c++17
-EXTRA_LDFLAGS	+= -std=c++17
-EXTRA_CFLAGS	+= -std=c99
-
 CPPFLAGS		= $(patsubst %,-I%,$(strip $(INCLUDE_DIRS)))
-CFLAGS			= $(EXTRA_CFLAGS)
-CXXFLAGS		= $(EXTRA_CXXFLAGS)
-LDFLAGS			= $(EXTRA_LDFLAGS) $(patsubst %,-L%,$(strip $(LIB_DIRS))) $(patsubst %,-l%,$(strip $(LIBRARIES)))
+CFLAGS			= $(WARNING_FLAGS) $(OPT_FLAGS) $(SYSTEM_CFLAGS) -std=c99
+CXXFLAGS		= $(WARNING_FLAGS) $(OPT_FLAGS) $(SYSTEM_CXXFLAGS) -std=c++17
+LDFLAGS			= $(WARNING_FLAGS) $(OPT_FLAGS) $(SYSTEM_LDFLAGS) -std=c++17 $(patsubst %,-L%,$(strip $(LIB_DIRS))) $(patsubst %,-l%,$(strip $(LIBRARIES)))
+
+PYTHON_CFLAGS	+= $(SYSTEM_CFLAGS) -std=c++17
+PYTHON_CXXFLAGS	+= $(SYSTEM_CXXFLAGS) -std=c++17
+PYTHON_LDFLAGS	+= $(SYSTEM_LDFLAGS) -std=c99

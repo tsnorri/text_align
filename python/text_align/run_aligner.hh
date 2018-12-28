@@ -7,9 +7,9 @@
 #define TEXT_ALIGN_RUN_ALIGNER_HH
 
 #include <boost/beast/core/span.hpp>
+#include <libbio/map_on_stack.hh>
+#include <libbio/rle_bit_vector.hh>
 #include <text_align/alignment_graph_builder.hh>
-#include <text_align/map_on_stack.hh>
-#include <text_align/rle_bit_vector.hh>
 #include <text_align/smith_waterman/aligner.hh>
 
 
@@ -83,7 +83,7 @@ namespace text_align
 	void run_aligner(t_aligner_context &ctx, PyObject *lhso, PyObject *rhso)
 	{
 		// Convert the Python strings to spans.
-		text_align::map_on_stack_fn <detail::span_from_buffer>(
+		libbio::map_on_stack_fn <detail::span_from_buffer>(
 			[&ctx](auto const &lhss, auto const &rhss) {
 				if (ctx.stopped())
 					ctx.restart();
@@ -102,13 +102,13 @@ namespace text_align
 		auto &lhs_gaps(ctx.lhs_gaps());
 		auto &rhs_gaps(ctx.rhs_gaps());
 		// Convert the Python strings to spans. Throw if the vectors are not convertible to bit_vectors.
-		text_align::map_on_stack_fn <detail::span_from_buffer>(
+		libbio::map_on_stack_fn <detail::span_from_buffer>(
 			[&builder, &lhs_gaps, &rhs_gaps](auto const &lhss, auto const &rhss) {
 				builder.build_graph(
 					lhss,
 					rhss,
-					dynamic_cast <bit_vector const &>(lhs_gaps),
-					dynamic_cast <bit_vector const &>(rhs_gaps)
+					dynamic_cast <libbio::bit_vector const &>(lhs_gaps),
+					dynamic_cast <libbio::bit_vector const &>(rhs_gaps)
 				);
 			},
 			lhso, rhso

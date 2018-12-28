@@ -3,17 +3,17 @@
  * This code is licensed under MIT license (see LICENSE for details).
  */
 
-#include <text_align/algorithm.hh>
+#include <libbio/algorithm.hh>
 
 #include <boost/dynamic_bitset.hpp>
 #include <boost/locale/utf.hpp>
 #include <boost/range.hpp>
 #include <iostream>
+#include <libbio/int_vector.hh>
+#include <libbio/map_on_stack.hh>
+#include <libbio/mmap_handle.hh>
 #include <string>
 #include <text_align/code_point_iterator.hh>
-#include <text_align/int_vector.hh>
-#include <text_align/map_on_stack.hh>
-#include <text_align/mmap_handle.hh>
 #include <text_align/smith_waterman/aligner.hh>
 #include <text_align/smith_waterman/alignment_context.hh>
 #include <vector>
@@ -35,11 +35,11 @@ typedef ta::smith_waterman::detail::score_result <score_type> score_result;
 
 struct score_container
 {
-	ta::matrix <score_type>		score;
-	ta::matrix <score_type>		gap_score_lhs;
-	ta::matrix <score_type>		gap_score_rhs;
-	ta::matrix <std::uint8_t>	max_idx;
-	ta::matrix <std::uint8_t>	did_start_gap;
+	libbio::matrix <score_type>		score;
+	libbio::matrix <score_type>		gap_score_lhs;
+	libbio::matrix <score_type>		gap_score_rhs;
+	libbio::matrix <std::uint8_t>	max_idx;
+	libbio::matrix <std::uint8_t>	did_start_gap;
 	
 	score_container() = default;
 	
@@ -65,8 +65,8 @@ class aligner_delegate
 {
 protected:
 	boost::asio::io_context	*m_pool{};
-	ta::bit_vector m_lhs_gaps;
-	ta::bit_vector m_rhs_gaps;
+	libbio::bit_vector m_lhs_gaps;
+	libbio::bit_vector m_rhs_gaps;
 	
 public:
 	aligner_delegate() = default;
@@ -75,8 +75,8 @@ public:
 	{
 	}
 	
-	ta::bit_vector const &lhs_gaps() const { return m_lhs_gaps; }
-	ta::bit_vector const &rhs_gaps() const { return m_rhs_gaps; }
+	libbio::bit_vector const &lhs_gaps() const { return m_lhs_gaps; }
+	libbio::bit_vector const &rhs_gaps() const { return m_rhs_gaps; }
 	
 	virtual void will_run_aligner(ta::smith_waterman::aligner_base &aligner, std::size_t const lhs_size, std::size_t const rhs_size) {}
 	void finish(ta::smith_waterman::aligner_base &aligner) { /* m_pool->stop(); */ }
@@ -113,11 +113,11 @@ public:
 		if (initial)
 		{
 			// Store the calculated values.
-			text_align_assert(SCORE_MAX == m_scores.score(j, i));
-			text_align_assert(SCORE_MAX == m_scores.gap_score_lhs(j, i));
-			text_align_assert(SCORE_MAX == m_scores.gap_score_rhs(j, i));
-			text_align_assert(UINT8_MAX == m_scores.max_idx(j, i));
-			text_align_assert(UINT8_MAX == m_scores.did_start_gap(j, i));
+			libbio_assert(SCORE_MAX == m_scores.score(j, i));
+			libbio_assert(SCORE_MAX == m_scores.gap_score_lhs(j, i));
+			libbio_assert(SCORE_MAX == m_scores.gap_score_rhs(j, i));
+			libbio_assert(UINT8_MAX == m_scores.max_idx(j, i));
+			libbio_assert(UINT8_MAX == m_scores.did_start_gap(j, i));
 			
 			m_scores.score(j, i) = result.score;
 			m_scores.gap_score_lhs(j, i) = result.gap_score_lhs;
@@ -127,11 +127,11 @@ public:
 		}
 		else
 		{
-			text_align_assert(m_scores.score(j, i) == result.score);
-			text_align_assert(m_scores.gap_score_lhs(j, i) == result.gap_score_lhs);
-			text_align_assert(m_scores.gap_score_rhs(j, i) == result.gap_score_rhs);
-			text_align_assert(m_scores.max_idx(j, i) == result.max_idx);
-			text_align_assert(m_scores.did_start_gap(j, i) == result.did_start_gap);
+			libbio_assert(m_scores.score(j, i) == result.score);
+			libbio_assert(m_scores.gap_score_lhs(j, i) == result.gap_score_lhs);
+			libbio_assert(m_scores.gap_score_rhs(j, i) == result.gap_score_rhs);
+			libbio_assert(m_scores.max_idx(j, i) == result.max_idx);
+			libbio_assert(m_scores.did_start_gap(j, i) == result.did_start_gap);
 		}
 	}
 };
@@ -177,9 +177,9 @@ std::size_t copy_distance(t_range range)
 
 
 template <typename t_range>
-void print_aligned(t_range const &range, ta::bit_vector const &gaps)
+void print_aligned(t_range const &range, libbio::bit_vector const &gaps)
 {
-	//text_align_assert(str.size() <= gaps.size());
+	//libbio_assert(str.size() <= gaps.size());
 	
 	std::string buffer;
 	
@@ -191,7 +191,7 @@ void print_aligned(t_range const &range, ta::bit_vector const &gaps)
 	{
 		if (0 == val)
 		{
-			text_align_assert(it != end);
+			libbio_assert(it != end);
 			boost::locale::utf::utf_traits <char>::encode(*it++, ostream_it);
 		}
 		else
@@ -199,7 +199,7 @@ void print_aligned(t_range const &range, ta::bit_vector const &gaps)
 			std::cout << '-';
 		}
 	}
-	text_align_assert(it == end);
+	libbio_assert(it == end);
 	std::cout << std::endl;
 }
 
@@ -219,7 +219,7 @@ struct string_view_from_input
 		}
 		else
 		{
-			text_align::mmap_handle handle;
+			libbio::mmap_handle handle;
 			handle.open(path_arg);
 			std::string_view view(handle.data(), handle.size());
 			fn(view);
@@ -266,8 +266,8 @@ void run_aligner(
 		auto const rhsr(ta::make_code_point_iterator_range(rhsv.cbegin(), rhsv.cend()));
 		auto const lhs_len(copy_distance(lhsr));
 		auto const rhs_len(copy_distance(rhsr));
-		text_align_assert(lhsr.begin() != lhsr.end());
-		text_align_assert(rhsr.begin() != rhsr.end());
+		libbio_assert(lhsr.begin() != lhsr.end());
+		libbio_assert(rhsr.begin() != rhsr.end());
 		
 		delegate.will_run_aligner(aligner, lhs_len, rhs_len);
 		aligner.align(lhsr, rhsr, lhs_len, rhs_len);
@@ -283,7 +283,7 @@ void process_input(boost::asio::io_context &pool, gengetopt_args_info const &arg
 {
 	auto const lhs_input(std::make_tuple(args_info.lhs_arg, args_info.lhs_file_arg));
 	auto const rhs_input(std::make_tuple(args_info.rhs_arg, args_info.rhs_file_arg));
-	ta::map_on_stack_fn <string_view_from_input>(
+	libbio::map_on_stack_fn <string_view_from_input>(
 		[&pool, &args_info](std::string_view const &lhsv, std::string_view const &rhsv) {
 			
 			// Check whether the alignment should also be verified.
@@ -301,7 +301,7 @@ void process_input(boost::asio::io_context &pool, gengetopt_args_info const &arg
 					verifying_aligner_type verifying_aligner(pool, ad);
 					configure_aligner(verifying_aligner, args_info);
 					run_aligner(verifying_aligner, ad, pool, lhsv, rhsv, args_info);
-					text_align_assert(ad.lhs_gaps().size() == ad.rhs_gaps().size());
+					libbio_assert(ad.lhs_gaps().size() == ad.rhs_gaps().size());
 				}
 				
 				tested_aligner_type tested_aligner(pool, td);
@@ -314,7 +314,7 @@ void process_input(boost::asio::io_context &pool, gengetopt_args_info const &arg
 					auto const &rhs_expected_gaps(ad.rhs_gaps());
 					auto const &lhs_gaps(td.lhs_gaps());
 					auto const &rhs_gaps(td.rhs_gaps());
-					text_align_assert(lhs_gaps.size() == rhs_gaps.size());
+					libbio_assert(lhs_gaps.size() == rhs_gaps.size());
 					if (lhs_expected_gaps.size() != lhs_gaps.size())
 						std::cerr << "Traceback lengths do not match. Expected " << lhs_expected_gaps.size() << ", got " << lhs_gaps.size() << ".\n";
 					

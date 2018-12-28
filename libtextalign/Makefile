@@ -1,9 +1,7 @@
 include ../local.mk
 include ../common.mk
 
-OBJECTS = 	alignment_graph_builder.o \
-			assert.o \
-			mmap_handle.o
+OBJECTS = 	alignment_graph_builder.o
 
 
 all: libtextalign.a

@@ -47,7 +47,7 @@ namespace text_align {
 	{
 		typedef alignment_graph::distinct_node node_type;
 
-		text_align_always_assert(! (alignment_graph::GAP_CHARACTER == lhs && alignment_graph::GAP_CHARACTER == rhs));
+		libbio_always_assert(! (alignment_graph::GAP_CHARACTER == lhs && alignment_graph::GAP_CHARACTER == rhs));
 		
 		if (!m_current_segment || m_current_segment->type() != alignment_graph::node_type::DISTINCT)
 		{

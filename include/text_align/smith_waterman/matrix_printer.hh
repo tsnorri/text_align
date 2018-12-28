@@ -22,16 +22,16 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		typedef aligner_base::arrow_type	arrow_type;
 		
 	protected:
-		packed_matrix <1, std::uint64_t>	m_path;
-		t_lhs_it							m_lhs_it{};
-		t_rhs_it							m_rhs_it{};
-		std::size_t							m_padding{};
-		std::size_t							m_lhs_offset{};
-		std::size_t							m_rhs_offset{};
-		std::size_t							m_rows{};
-		std::size_t							m_columns{};
-		std::size_t							m_j_start{};
-		std::size_t							m_i_start{};
+		libbio::packed_matrix <1, std::uint64_t>	m_path;
+		t_lhs_it									m_lhs_it{};
+		t_rhs_it									m_rhs_it{};
+		std::size_t									m_padding{};
+		std::size_t									m_lhs_offset{};
+		std::size_t									m_rhs_offset{};
+		std::size_t									m_rows{};
+		std::size_t									m_columns{};
+		std::size_t									m_j_start{};
+		std::size_t									m_i_start{};
 		
 	public:
 		matrix_printer() = default;
@@ -67,7 +67,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		void print_traceback(t_matrix const &tb);
 		
 		template <typename t_score>
-		void print_scores(matrix <t_score> const &scores);
+		void print_scores(libbio::matrix <t_score> const &scores);
 		
 	protected:
 		bool check_on_path(std::size_t const j, std::size_t const i);
@@ -142,7 +142,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 					goto exit_loop;
 					
 				default:
-					fail_assertion();
+					libbio_fail("Unexpected traceback value");
 			}
 		}
 	exit_loop:
@@ -152,7 +152,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 	
 	template <typename t_lhs_it, typename t_rhs_it>
 	template <typename t_score>
-	void matrix_printer <t_lhs_it, t_rhs_it>::print_scores(matrix <t_score> const &scores)
+	void matrix_printer <t_lhs_it, t_rhs_it>::print_scores(libbio::matrix <t_score> const &scores)
 	{
 		namespace io = boost::iostreams;
 		typedef std::vector <char> buffer_type;
@@ -275,7 +275,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 							break;
 							
 						default:
-							fail_assertion();
+							libbio_fail("Unexpected traceback value");
 							break;
 					}
 				}
@@ -297,7 +297,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 							
 						case arrow_type::ARROW_FINISH:
 						default:
-							fail_assertion();
+							libbio_fail("Unexpected traceback value");
 							break;
 					}
 				}

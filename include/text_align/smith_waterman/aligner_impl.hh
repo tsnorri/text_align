@@ -113,10 +113,10 @@ namespace text_align { namespace smith_waterman { namespace detail {
 	{
 		auto column(score_buffer.column(column_idx));
 		
-		text_align_assert_lte(lhs_idx, lhs_limit);
+		libbio_assert_lte(lhs_idx, lhs_limit);
 		auto const count(lhs_limit - lhs_idx);
-		text_align_assert_lte(count, column.size());
-		text_align_assert_lte(count + lhs_idx, std::distance(src.begin(), src.end())); // count <= std::distance(src.begin() + lhs_idx, src.end())
+		libbio_assert_lte(count, column.size());
+		libbio_assert_lte(count + lhs_idx, std::distance(src.begin(), src.end())); // count <= std::distance(src.begin() + lhs_idx, src.end())
 		
 		auto it(src.begin());
 		std::copy(it + lhs_idx, it + lhs_limit, column.begin());
@@ -143,15 +143,15 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		gap_score_lhs += gap_penalty;
 		gap_score_rhs += gap_penalty;
 		
-		auto const s1(prev_diag_score + (text_align::is_equal(lhs_c, rhs_c) ? identity_score : mismatch_penalty));
+		auto const s1(prev_diag_score + (libbio::is_equal(lhs_c, rhs_c) ? identity_score : mismatch_penalty));
 		auto const s2(gap_score_lhs);	// Lhs string
 		auto const s3(gap_score_rhs);	// Rhs string
 		
 		// Take gap_start_penalty into account when choosing the maximum element and saving the score.
 		// When caching the value, don't add gap_start_penalty.
-		auto const scores(make_array <score_type>(s1, gap_start_penalty + s2, gap_start_penalty + s3));
-		result.max_idx = argmax_element(scores.begin(), scores.end());
-		text_align_assert(result.max_idx < scores.size());
+		auto const scores(libbio::make_array <score_type>(s1, gap_start_penalty + s2, gap_start_penalty + s3));
+		result.max_idx = libbio::argmax_element(scores.begin(), scores.end());
+		libbio_assert(result.max_idx < scores.size());
 		result.score = scores[result.max_idx];
 		
 		// Check if the target cell should be used as a gap start position.
@@ -187,7 +187,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		score_type &gap_score_rhs					// Out
 	)
 	{
-		text_align_assert(lhs_it != m_lhs_text->end());
+		libbio_assert(lhs_it != m_lhs_text->end());
 		auto const lhs_c(*lhs_it);
 		auto const prev_diag_score((*src_buffer_ptr)[row_idx]);
 		calculate_score(prev_diag_score, lhs_c, rhs_c, this->m_data->gap_scores_lhs[1 + row_idx], gap_score_rhs, result);
@@ -204,8 +204,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 	{
 		this->m_lhs->score_samples(row_idx, block_idx)		= result.score;													// Vertical
 		this->m_lhs->gap_score_samples(row_idx, block_idx)	= result.gap_score_lhs;											// Vertical
-		do_and_assert_eq(this->m_lhs->traceback_samples(row_idx, block_idx).fetch_or(result.max_idx), 0);					// Vertical, values same as arrow_type::*
-		do_and_assert_eq(this->m_lhs->gap_start_position_samples(row_idx, block_idx).fetch_or(result.did_start_gap), 0);	// Vertical
+		libbio_do_and_assert_eq(this->m_lhs->traceback_samples(row_idx, block_idx).fetch_or(result.max_idx), 0);					// Vertical, values same as arrow_type::*
+		libbio_do_and_assert_eq(this->m_lhs->gap_start_position_samples(row_idx, block_idx).fetch_or(result.did_start_gap), 0);	// Vertical
 	}
 	
 	
@@ -214,8 +214,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 	{
 		this->m_rhs->score_samples(column_idx, block_idx)		= result.score;												// Horizontal
 		this->m_rhs->gap_score_samples(column_idx, block_idx)	= result.gap_score_rhs;										// Horizontal
-		do_and_assert_eq(this->m_rhs->traceback_samples(column_idx, block_idx).fetch_or(result.max_idx), 0);				// Horizontal, values same as arrow_type::*
-		do_and_assert_eq(this->m_rhs->gap_start_position_samples(column_idx, block_idx).fetch_or(result.did_start_gap), 0);	// Horizontal
+		libbio_do_and_assert_eq(this->m_rhs->traceback_samples(column_idx, block_idx).fetch_or(result.max_idx), 0);				// Horizontal, values same as arrow_type::*
+		libbio_do_and_assert_eq(this->m_rhs->gap_start_position_samples(column_idx, block_idx).fetch_or(result.did_start_gap), 0);	// Horizontal
 	}
 	
 	
@@ -241,14 +241,14 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		// the last row and column (in the adjacent blocks) are handled separately.
 		auto const lhs_idx(segment_length * lhs_block_idx);
 		auto const rhs_idx(segment_length * rhs_block_idx);
-		auto const lhs_limits(make_array <std::size_t>(1 + this->m_parameters->lhs_length, lhs_idx + segment_length));
-		auto const rhs_limits(make_array <std::size_t>(1 + this->m_parameters->rhs_length, rhs_idx + segment_length));
-		bool const should_calculate_final_row(argmin_element(lhs_limits.begin(), lhs_limits.end()));
-		bool const should_calculate_final_column(argmin_element(rhs_limits.begin(), rhs_limits.end()));
+		auto const lhs_limits(libbio::make_array <std::size_t>(1 + this->m_parameters->lhs_length, lhs_idx + segment_length));
+		auto const rhs_limits(libbio::make_array <std::size_t>(1 + this->m_parameters->rhs_length, rhs_idx + segment_length));
+		bool const should_calculate_final_row(libbio::argmin_element(lhs_limits.begin(), lhs_limits.end()));
+		bool const should_calculate_final_column(libbio::argmin_element(rhs_limits.begin(), rhs_limits.end()));
 		auto const lhs_limit(lhs_limits[should_calculate_final_row]);
 		auto const rhs_limit(rhs_limits[should_calculate_final_column]);
-		text_align_assert(lhs_limit - lhs_idx <= segment_length);
-		text_align_assert(rhs_limit - rhs_idx <= segment_length);
+		libbio_assert(lhs_limit - lhs_idx <= segment_length);
+		libbio_assert(rhs_limit - rhs_idx <= segment_length);
 		
 		// Score buffers.
 		auto *src_buffer_ptr(&this->m_data->score_buffer_1);
@@ -292,7 +292,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		auto lhs_it_2(lhs_it); // Copy, needed to store the iterator after the loop.
 		for (std::size_t i(rhs_idx); i < rhs_limit - 1; ++i) // Column
 		{
-			text_align_assert(rhs_it != m_rhs_text->end());
+			libbio_assert(rhs_it != m_rhs_text->end());
 			
 			auto const rhs_c(*rhs_it);
 			lhs_it_2 = lhs_it;
@@ -311,8 +311,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				{
 					auto const y(1 + j - lhs_idx);
 					auto const x(1 + i - rhs_idx);
-					do_and_assert_eq(this->m_data->traceback(y, x).fetch_or(result.max_idx), 0);
-					do_and_assert_eq(this->m_data->gap_start_positions(y, x).fetch_or(result.did_start_gap), 0);
+					libbio_do_and_assert_eq(this->m_data->traceback(y, x).fetch_or(result.max_idx), 0);
+					libbio_do_and_assert_eq(this->m_data->gap_start_positions(y, x).fetch_or(result.did_start_gap), 0);
 				}
 
 				++lhs_it_2;
@@ -343,14 +343,14 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		{
 			++lhs_it_2;
 			auto const it_idx(1 + lhs_block_idx);
-			text_align_assert(it_idx < m_lhs_iterators.size());
+			libbio_assert(it_idx < m_lhs_iterators.size());
 			m_lhs_iterators[it_idx] = lhs_it_2;
 		}
 		
 		// Fill the next sample column and the corner if needed.
 		if (t_initial && should_calculate_final_column)
 		{
-			text_align_assert(rhs_it != m_rhs_text->end());
+			libbio_assert(rhs_it != m_rhs_text->end());
 			auto const column_idx(rhs_limit - 1);
 			
 			auto const rhs_c(*rhs_it);
@@ -378,7 +378,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			{
 				++rhs_it;
 				auto const it_idx(1 + rhs_block_idx);
-				text_align_assert(it_idx < m_rhs_iterators.size());
+				libbio_assert(it_idx < m_rhs_iterators.size());
 				m_rhs_iterators[it_idx] = rhs_it;
 			}
 		}
@@ -407,17 +407,17 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		
 		std::size_t lhs_block_idx(this->m_parameters->lhs_segments - 1);
 		std::size_t rhs_block_idx(this->m_parameters->rhs_segments - 1);
-		matrix <score_type> score_buffer;
-		matrix <score_type> *score_buffer_ptr(nullptr);
+		libbio::matrix <score_type> score_buffer;
+		libbio::matrix <score_type> *score_buffer_ptr(nullptr);
 		
 		// Scoring matrix indices.
 		// lhs_idx and rhs_idx point to the upper left corner of the final block, that is, the bottom-right one.
 		auto const lhs_idx(seg_len * lhs_block_idx);
 		auto const rhs_idx(seg_len * rhs_block_idx);
-		text_align_assert(lhs_idx <= lhs_len);
-		text_align_assert(rhs_idx <= rhs_len);
-		std::size_t j_limit(min(seg_len, 1 + lhs_len - lhs_idx)); // (Last) row
-		std::size_t i_limit(min(seg_len, 1 + rhs_len - rhs_idx)); // (Last) column
+		libbio_assert(lhs_idx <= lhs_len);
+		libbio_assert(rhs_idx <= rhs_len);
+		std::size_t j_limit(libbio::min_ct(seg_len, 1 + lhs_len - lhs_idx)); // (Last) row
+		std::size_t i_limit(libbio::min_ct(seg_len, 1 + rhs_len - rhs_idx)); // (Last) column
 		std::size_t next_i_limit(i_limit);
 		std::size_t next_j_limit(j_limit);
 		auto j(j_limit - 1);
@@ -442,20 +442,20 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			auto const lhs_first(seg_len * lhs_block_idx);
 			auto const rhs_first(seg_len * rhs_block_idx);
 			{
-				auto const lhs_limit(min(1 + lhs_len, seg_len * (1 + lhs_block_idx)));
-				auto const rhs_limit(min(1 + rhs_len, seg_len * (1 + rhs_block_idx)));
+				auto const lhs_limit(libbio::min_ct(1 + lhs_len, seg_len * (1 + lhs_block_idx)));
+				auto const rhs_limit(libbio::min_ct(1 + rhs_len, seg_len * (1 + rhs_block_idx)));
 			
-				matrices::copy_to_word_aligned(
+				libbio::matrices::copy_to_word_aligned(
 					this->m_lhs->traceback_samples.column(rhs_block_idx, lhs_first, lhs_limit),
 					traceback.column(0)
 				);
-				matrices::copy_to_word_aligned(
+				libbio::matrices::copy_to_word_aligned(
 					this->m_lhs->gap_start_position_samples.column(rhs_block_idx, lhs_first, lhs_limit),
 					gap_start_positions.column(0)
 				);
 				
-				matrices::transpose_column_to_row(this->m_rhs->traceback_samples.column(lhs_block_idx, rhs_first, rhs_limit), traceback.row(0));
-				matrices::transpose_column_to_row(this->m_rhs->gap_start_position_samples.column(lhs_block_idx, rhs_first, rhs_limit), this->m_data->gap_start_positions.row(0));
+				libbio::matrices::transpose_column_to_row(this->m_rhs->traceback_samples.column(lhs_block_idx, rhs_first, rhs_limit), traceback.row(0));
+				libbio::matrices::transpose_column_to_row(this->m_rhs->gap_start_position_samples.column(lhs_block_idx, rhs_first, rhs_limit), this->m_data->gap_start_positions.row(0));
 			}
 			
 			// The first row and column are now filled, run the filling algorithm.
@@ -463,7 +463,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			fill_block <false>(lhs_block_idx, rhs_block_idx, score_buffer_ptr);
 
 			// If this is the last block, check that the corner is marked.
-			text_align_assert((! (0 == lhs_block_idx && 0 == rhs_block_idx)) || traceback(0, 0) == arrow_type::ARROW_FINISH);
+			libbio_assert((! (0 == lhs_block_idx && 0 == rhs_block_idx)) || traceback(0, 0) == arrow_type::ARROW_FINISH);
 			
 			// Continue finding the gap starting position if needed.
 			{
@@ -477,7 +477,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 						this->push_rhs(0, steps);
 						if (!res)
 						{
-							text_align_assert(rhs_block_idx);
+							libbio_assert(rhs_block_idx);
 							--rhs_block_idx;
 							i = seg_len - 1;
 							goto continue_loop;
@@ -492,7 +492,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 						this->push_rhs(1, steps);
 						if (!res)
 						{
-							text_align_assert(lhs_block_idx);
+							libbio_assert(lhs_block_idx);
 							--lhs_block_idx;
 							j = seg_len - 1;
 							goto continue_loop;
@@ -524,7 +524,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 						{
 							if (0 == i)
 							{
-								text_align_assert(rhs_block_idx);
+								libbio_assert(rhs_block_idx);
 								--rhs_block_idx;
 								i = seg_len - 1;
 								next_i_limit = seg_len;
@@ -536,7 +536,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 							
 							if (0 == j)
 							{
-								text_align_assert(lhs_block_idx);
+								libbio_assert(lhs_block_idx);
 								--lhs_block_idx;
 								j = seg_len - 1;
 								next_j_limit = seg_len;
@@ -549,8 +549,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 							goto continue_loop;
 						}
 					
-						text_align_assert(i);
-						text_align_assert(j);
+						libbio_assert(i);
+						libbio_assert(j);
 						--i;
 						--j;
 						
@@ -564,7 +564,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 						this->push_rhs(0, steps);
 						if (!res)
 						{
-							text_align_assert(rhs_block_idx);
+							libbio_assert(rhs_block_idx);
 							--rhs_block_idx;
 							i = seg_len - 1;
 							next_i_limit = seg_len;
@@ -582,7 +582,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 						this->push_rhs(1, steps);
 						if (!res)
 						{
-							text_align_assert(lhs_block_idx);
+							libbio_assert(lhs_block_idx);
 							--lhs_block_idx;
 							j = seg_len - 1;
 							next_j_limit = seg_len;
@@ -597,7 +597,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 						goto exit_loop;
 						
 					default:
-						fail_assertion();
+						libbio_fail("Unexpected traceback value");
 				}
 			}
 			

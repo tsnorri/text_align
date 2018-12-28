@@ -13,7 +13,7 @@ clean:
 .PHONY: all clean
 
 text_align: $(OBJECTS)
-	$(CXX) -o $@ $(OBJECTS) $(LDFLAGS) ../libtextalign/libtextalign.a
+	$(CXX) -o $@ $(OBJECTS) $(LDFLAGS) ../libtextalign/libtextalign.a ../lib/libbio/src/libbio.a
 
 %.o: %.cc
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -Wall -Werror -o $@ $<

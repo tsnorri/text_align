@@ -4,7 +4,7 @@
 # cython: language_level=3
 
 
-cdef extern from "<text_align/int_vector.hh>" namespace "text_align":
+cdef extern from "<libbio/int_vector.hh>" namespace "libbio":
 	cdef cppclass int_vector[t_bits, t_word]:
 		pass
 

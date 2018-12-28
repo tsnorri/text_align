@@ -6,13 +6,13 @@
 #ifndef TEXT_ALIGN_SMITH_WATERMAN_ALIGNER_HH
 #define TEXT_ALIGN_SMITH_WATERMAN_ALIGNER_HH
 
-#include <text_align/algorithm.hh>
+#include <libbio/algorithm.hh>
 
 #include <atomic>
 #include <boost/asio.hpp>
+#include <libbio/int_vector.hh>
+#include <libbio/matrix.hh>
 #include <memory>
-#include <text_align/int_vector.hh>
-#include <text_align/matrix.hh>
 #include <text_align/smith_waterman/aligner_base.hh>
 #include <text_align/smith_waterman/aligner_data.hh>
 #include <text_align/smith_waterman/aligner_impl.hh>
@@ -49,10 +49,10 @@ namespace text_align { namespace smith_waterman {
 		typedef t_word									word_type;
 		typedef t_score									score_type;
 		typedef std::vector <score_type>				score_vector;
-		typedef matrix <score_type>						score_matrix;
-		typedef packed_matrix <2, word_type>			traceback_matrix;
-		typedef packed_matrix <2, word_type>			gap_start_position_matrix;
-		typedef packed_matrix <1, word_type>			flag_matrix;
+		typedef libbio::matrix <score_type>				score_matrix;
+		typedef libbio::packed_matrix <2, word_type>	traceback_matrix;
+		typedef libbio::packed_matrix <2, word_type>	gap_start_position_matrix;
+		typedef libbio::packed_matrix <1, word_type>	flag_matrix;
 
 		typedef detail::aligner_impl_base <aligner>		impl_base_type;
 		friend impl_base_type;
