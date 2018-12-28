@@ -22,7 +22,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		typedef typename superclass::arrow_type					arrow_type;
 		typedef typename superclass::score_vector				score_vector;
 		typedef typename superclass::score_matrix				score_matrix;
-		typedef typename superclass::score_result				score_result;
+		typedef typename superclass::score_result_type			score_result_type;
 
 		enum find_gap_type : std::uint8_t
 		{
@@ -74,7 +74,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			t_rhs_c const rhs_c,
 			score_type gap_score_lhs,
 			score_type gap_score_rhs,
-			score_result &result						// Out
+			score_result_type &result					// Out
 		) const;
 		
 		template <bool t_initial, typename t_iterator, typename t_rhs_c>
@@ -84,12 +84,12 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			t_iterator const lhs_it,
 			t_rhs_c const rhs_c,
 			score_vector const *src_buffer_ptr,
-			score_result &result,						// Out
+			score_result_type &result,					// Out
 			score_type &gap_score_rhs					// Out
 		);
 			
-		inline void update_lhs_samples(std::size_t const row_idx, std::size_t const block_idx, score_result const &result);
-		inline void update_rhs_samples(std::size_t const column_idx, std::size_t const block_idx, score_result const &result);
+		inline void update_lhs_samples(std::size_t const row_idx, std::size_t const block_idx, score_result_type const &result);
+		inline void update_rhs_samples(std::size_t const column_idx, std::size_t const block_idx, score_result_type const &result);
 		
 		template <bool t_initial>
 		void fill_block(
@@ -131,7 +131,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		t_rhs_c const rhs_c,
 		score_type gap_score_lhs,	// Copy.
 		score_type gap_score_rhs,	// Copy.
-		score_result &result
+		score_result_type &result
 	) const
 	{
 		auto const identity_score(this->m_parameters->identity_score);
@@ -183,7 +183,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		t_iterator const lhs_it,
 		t_rhs_c const rhs_c,
 		score_vector const *src_buffer_ptr,
-		score_result &result,						// Out
+		score_result_type &result,					// Out
 		score_type &gap_score_rhs					// Out
 	)
 	{
@@ -200,7 +200,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 	
 	
 	template <typename t_owner, typename t_lhs, typename t_rhs>
-	void aligner_impl <t_owner, t_lhs, t_rhs>::update_lhs_samples(std::size_t const row_idx, std::size_t const block_idx, score_result const &result)
+	void aligner_impl <t_owner, t_lhs, t_rhs>::update_lhs_samples(std::size_t const row_idx, std::size_t const block_idx, score_result_type const &result)
 	{
 		this->m_lhs->score_samples(row_idx, block_idx)		= result.score;													// Vertical
 		this->m_lhs->gap_score_samples(row_idx, block_idx)	= result.gap_score_lhs;											// Vertical
@@ -210,7 +210,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 	
 	
 	template <typename t_owner, typename t_lhs, typename t_rhs>
-	void aligner_impl <t_owner, t_lhs, t_rhs>::update_rhs_samples(std::size_t const column_idx, std::size_t const block_idx, score_result const &result)
+	void aligner_impl <t_owner, t_lhs, t_rhs>::update_rhs_samples(std::size_t const column_idx, std::size_t const block_idx, score_result_type const &result)
 	{
 		this->m_rhs->score_samples(column_idx, block_idx)		= result.score;												// Horizontal
 		this->m_rhs->gap_score_samples(column_idx, block_idx)	= result.gap_score_rhs;										// Horizontal
@@ -288,7 +288,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		// it is the only column to fill.
 		auto const &topmost_row(this->m_rhs->score_samples.column(lhs_block_idx));			// Horizontal.
 		auto const &gap_scores_rhs(this->m_rhs->gap_score_samples.column(lhs_block_idx));	// Horizontal.
-		score_result result((*src_buffer_ptr)[lhs_limit - 1]);
+		score_result_type result((*src_buffer_ptr)[lhs_limit - 1]);
 		auto lhs_it_2(lhs_it); // Copy, needed to store the iterator after the loop.
 		for (std::size_t i(rhs_idx); i < rhs_limit - 1; ++i) // Column
 		{

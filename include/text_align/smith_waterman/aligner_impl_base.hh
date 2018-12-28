@@ -38,7 +38,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		typedef typename t_owner::score_matrix				score_matrix;
 		
 	public:
-		typedef score_result <score_type>					score_result;
+		typedef score_result <score_type>					score_result_type;
 		
 	protected:
 		// Pointers from t_owner.
@@ -78,7 +78,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		score_type block_score() const { return m_block_score; }
 
 	protected:
-		inline void did_calculate_score(std::size_t const j, std::size_t const i, score_result const &result, bool const initial);
+		inline void did_calculate_score(std::size_t const j, std::size_t const i, score_result_type const &result, bool const initial);
 		inline void push_lhs(bool const flag, std::size_t const count) { this->m_owner->push_lhs(flag, count); }
 		inline void push_rhs(bool const flag, std::size_t const count) { this->m_owner->push_rhs(flag, count); }
 		inline void reverse_gaps() { this->m_owner->reverse_gaps(); }
@@ -87,7 +87,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 	
 	
 	template <typename t_owner>
-	void aligner_impl_base <t_owner>::did_calculate_score(std::size_t const j, std::size_t const i, score_result const &result, bool const initial)
+	void aligner_impl_base <t_owner>::did_calculate_score(std::size_t const j, std::size_t const i, score_result_type const &result, bool const initial)
 	{
 		this->m_owner->did_calculate_score(j, i, result, initial);
 	}

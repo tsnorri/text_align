@@ -131,52 +131,52 @@ cdef class SmithWatermanAlignmentContext(AlignmentContext):
 
 	@property
 	def identity_score(self):
-		return self.ctx.aligner().identity_score()
+		return self.ctx.get_aligner().identity_score()
 
 	@identity_score.setter
 	def identity_score(self, score):
-		self.ctx.aligner().set_identity_score(score)
+		self.ctx.get_aligner().set_identity_score(score)
 
 	@property
 	def mismatch_penalty(self):
-		return self.ctx.aligner().mismatch_penalty()
+		return self.ctx.get_aligner().mismatch_penalty()
 
 	@mismatch_penalty.setter
 	def mismatch_penalty(self, score):
-		self.ctx.aligner().set_mismatch_penalty(score)
+		self.ctx.get_aligner().set_mismatch_penalty(score)
 
 	@property
 	def gap_start_penalty(self):
-		return self.ctx.aligner().gap_start_penalty()
+		return self.ctx.get_aligner().gap_start_penalty()
 
 	@gap_start_penalty.setter
 	def gap_start_penalty(self, score):
-		self.ctx.aligner().set_gap_start_penalty(score)
+		self.ctx.get_aligner().set_gap_start_penalty(score)
 
 	@property
 	def gap_penalty(self):
-		return self.ctx.aligner().gap_penalty()
+		return self.ctx.get_aligner().gap_penalty()
 
 	@gap_penalty.setter
 	def gap_penalty(self, score):
-		self.ctx.aligner().set_gap_penalty(score)
+		self.ctx.get_aligner().set_gap_penalty(score)
 
 	@property
 	def segment_length(self):
-		return self.ctx.aligner().segment_length()
+		return self.ctx.get_aligner().segment_length()
 
 	@segment_length.setter
 	def segment_length(self, length):
-		self.ctx.aligner().set_segment_length(length)
+		self.ctx.get_aligner().set_segment_length(length)
 
 	@property
 	def prints_debugging_information(self):
-		self.ctx.aligner().prints_debugging_information()
+		self.ctx.get_aligner().prints_debugging_information()
 
 	@prints_debugging_information.setter
 	def prints_debugging_information(self, should_print):
-		self.ctx.aligner().set_prints_debugging_information(should_print)
+		self.ctx.get_aligner().set_prints_debugging_information(should_print)
 
 	@property
 	def alignment_score(self):
-		self.ctx.aligner().alignment_score()
+		self.ctx.get_aligner().alignment_score()

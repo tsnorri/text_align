@@ -80,7 +80,7 @@ extern "C" {
 			
 			// Instantiate the aligner.
 			alignment_context_type ctx;
-			auto &aligner(ctx.aligner());
+			auto &aligner(ctx.get_aligner());
 			aligner.set_identity_score(match_score);
 			aligner.set_mismatch_penalty(mismatch_penalty);
 			aligner.set_gap_start_penalty(gap_start_penalty);

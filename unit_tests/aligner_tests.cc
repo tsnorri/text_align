@@ -48,7 +48,7 @@ void run_aligner(
 	score_type const gap_penalty
 )
 {
-	auto &aligner(ctx.aligner());
+	auto &aligner(ctx.get_aligner());
 
 	aligner.set_segment_length(block_size);
 	aligner.set_identity_score(match_score);

@@ -40,11 +40,11 @@ namespace text_align { namespace smith_waterman {
 		{
 		}
 		
-		aligner_type &aligner() { return m_aligner; }
-		aligner_type const &aligner() const { return m_aligner; }
+		aligner_type &get_aligner() { return m_aligner; }
+		aligner_type const &get_aligner() const { return m_aligner; }
 		
-		boost::asio::io_context &execution_context() { return m_ctx; }
-		boost::asio::io_context const &execution_context() const { return m_ctx; }
+		boost::asio::io_context &get_execution_context() { return m_ctx; }
+		boost::asio::io_context const &get_execution_context() const { return m_ctx; }
 		
 		void run() { m_ctx.run(); }
 		void restart() { m_ctx.restart(); }

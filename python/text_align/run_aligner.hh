@@ -88,7 +88,7 @@ namespace text_align
 				if (ctx.stopped())
 					ctx.restart();
 				
-				ctx.aligner().align(lhss, rhss);
+				ctx.get_aligner().align(lhss, rhss);
 				ctx.run();
 			},
 			lhso, rhso

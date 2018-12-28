@@ -42,7 +42,7 @@ cdef extern from "<text_align/smith_waterman/alignment_context_pv.hh>" namespace
 		void restart() except +
 		bool stopped() except +
 		
-		aligner[t_score, t_word, alignment_context_pv[t_score, t_word]] &aligner()
+		aligner[t_score, t_word, alignment_context_pv[t_score, t_word]] &get_aligner()
 
 		const bit_vector_interface[t_word] &lhs_gaps() except +
 		const bit_vector_interface[t_word] &rhs_gaps() except +

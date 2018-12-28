@@ -46,40 +46,40 @@ namespace text_align { namespace smith_waterman {
 			SCORE_MIN		= std::numeric_limits <t_score>::min()
 		};
 
-		typedef t_word									word_type;
-		typedef t_score									score_type;
-		typedef std::vector <score_type>				score_vector;
-		typedef libbio::matrix <score_type>				score_matrix;
-		typedef libbio::packed_matrix <2, word_type>	traceback_matrix;
-		typedef libbio::packed_matrix <2, word_type>	gap_start_position_matrix;
-		typedef libbio::packed_matrix <1, word_type>	flag_matrix;
+		typedef t_word										word_type;
+		typedef t_score										score_type;
+		typedef std::vector <score_type>					score_vector;
+		typedef libbio::matrix <score_type>					score_matrix;
+		typedef libbio::packed_matrix <2, word_type>		traceback_matrix;
+		typedef libbio::packed_matrix <2, word_type>		gap_start_position_matrix;
+		typedef libbio::packed_matrix <1, word_type>		flag_matrix;
 
-		typedef detail::aligner_impl_base <aligner>		impl_base_type;
+		typedef detail::aligner_impl_base <aligner>			impl_base_type;
 		friend impl_base_type;
 		
-		typedef typename impl_base_type::score_result	score_result;
+		typedef typename impl_base_type::score_result_type	score_result_type;
 		
 	protected:
-		context_type									*m_ctx{nullptr};
-		t_delegate										*m_delegate{nullptr};
-		std::unique_ptr <impl_base_type>				m_aligner_impl;
+		context_type										*m_ctx{nullptr};
+		t_delegate											*m_delegate{nullptr};
+		std::unique_ptr <impl_base_type>					m_aligner_impl;
 		
-		detail::aligner_sample <aligner>				m_lhs; // Vertical vectors.
-		detail::aligner_sample <aligner>				m_rhs; // Horizontal vectors.
-		detail::aligner_parameters <score_type>			m_parameters;
-		detail::aligner_data <aligner>					m_data;
+		detail::aligner_sample <aligner>					m_lhs; // Vertical vectors.
+		detail::aligner_sample <aligner>					m_rhs; // Horizontal vectors.
+		detail::aligner_parameters <score_type>				m_parameters;
+		detail::aligner_data <aligner>						m_data;
 		
-		score_type										m_alignment_score{0};
+		score_type											m_alignment_score{0};
 		
 	protected:
 		// Delegate member functions.
 		template <typename t_class>
 		using did_calculate_score_t = std::integral_constant <
-			void (t_class::*)(aligner_base &, std::size_t, std::size_t, score_result const &, bool),
+			void (t_class::*)(aligner_base &, std::size_t, std::size_t, score_result_type const &, bool),
 			&t_class::did_calculate_score
 		>;
 		
-		inline void did_calculate_score(std::size_t const row, std::size_t const column, score_result const &result, bool const initial);
+		inline void did_calculate_score(std::size_t const row, std::size_t const column, score_result_type const &result, bool const initial);
 		inline void push_lhs(bool const flag, std::size_t const count) { this->m_delegate->push_lhs(flag, count); }
 		inline void push_rhs(bool const flag, std::size_t const count) { this->m_delegate->push_rhs(flag, count); }
 		inline void reverse_gaps() { this->m_delegate->reverse_gaps(); }
@@ -131,7 +131,7 @@ namespace text_align { namespace smith_waterman {
 	void aligner <t_score, t_word, t_delegate>::did_calculate_score(
 		std::size_t const row,
 		std::size_t const column,
-		score_result const &result,
+		score_result_type const &result,
 		bool const initial
 	)
 	{
