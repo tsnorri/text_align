@@ -9,6 +9,7 @@ PYTHON			?= python
 PG_CONFIG		?= pg_config
 GRUNT			?= grunt
 YARN			?= yarn
+CP				?= cp
 
 WARNING_FLAGS	?=
 OPT_FLAGS		?=
