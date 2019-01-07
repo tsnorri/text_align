@@ -10,6 +10,7 @@
 #include <iomanip>
 #include <iostream>
 #include <iterator>
+#include <libbio/rle_bit_vector.hh>
 #include <string_view>
 #include <vector>
 
@@ -40,6 +41,28 @@ namespace text_align { namespace json {
 			first = false;
 		}
 		stream << ']';
+	}
+	
+	
+	template <typename t_count>
+	void to_json(std::ostream &stream, libbio::rle_bit_vector <t_count> const &vec)
+	{
+		// FIXME: come up with a better way to handle the contained vector.
+		// FIXME: consider implementing serializable in rle_bit_vector.
+		stream << "{\"starts_with_zero\":";
+		stream << (vec.starts_with_zero() ? "true" : "false");
+		stream << ",\"runs\":[";
+		
+		bool first(true);
+		for (auto const &val : vec.const_runs())
+		{
+			if (first)
+				stream << val;
+			else
+				stream << ',' << val;
+			first = false;
+		}
+		stream << "]}";
 	}
 	
 	
