@@ -20,11 +20,19 @@ extern "C" {
 
 namespace {
 	
+	typedef std::int32_t score_type;
+	
 	typedef text_align::smith_waterman::alignment_context <
-		std::int32_t,
+		score_type,
 		std::uint64_t,
 		libbio::bit_vector
-	> alignment_context_type;
+	> alignment_bv_context_type;
+		
+	typedef text_align::smith_waterman::alignment_context <
+		score_type,
+		std::uint64_t,
+		libbio::rle_bit_vector <std::uint32_t>
+	> alignment_rle_context_type;
 	
 	
 	void make_string_view(text const *txt, std::string_view &out_sv)
@@ -37,6 +45,27 @@ namespace {
 	std::size_t copy_distance(t_range range)
 	{
 		return boost::distance(range);
+	}
+	
+	
+	template <typename t_aligner>
+	void assign_scores(t_aligner &aligner, score_type const match, score_type const mismatch, score_type const gap_start, score_type const gap)
+	{
+		aligner.set_identity_score(match);
+		aligner.set_mismatch_penalty(mismatch);
+		aligner.set_gap_start_penalty(gap_start);
+		aligner.set_gap_penalty(gap);
+	}
+	
+	
+	void serialize_to_json(alignment_rle_context_type const &ctx, std::ostringstream &os)
+	{
+		// Write JSON directly to os.
+		os << "{\"left\":";
+		text_align::json::to_json(os, ctx.lhs_gaps());
+		os << ",\"right\":";
+		text_align::json::to_json(os, ctx.rhs_gaps());
+		os << "}";
 	}
 }
 
@@ -51,11 +80,11 @@ extern "C" {
 		namespace lb = libbio;
 		namespace ta = text_align;
 		
-		if (6 != PG_NARGS())
+		if (7 != PG_NARGS())
 		{
 			ereport(ERROR, (
 				errcode(ERRCODE_PROTOCOL_VIOLATION),
-				errmsg("expected six arguments: lhs, rhs, match_score, mismatch_penalty, gap_start_penalty, gap_penalty")
+				errmsg("expected seven arguments: lhs, rhs, match_score, mismatch_penalty, gap_start_penalty, gap_penalty, should_return_alignment_graph")
 			));
 		}
 
@@ -65,8 +94,9 @@ extern "C" {
 		auto const mismatch_penalty(PG_GETARG_INT32(3));
 		auto const gap_start_penalty(PG_GETARG_INT32(4));
 		auto const gap_penalty(PG_GETARG_INT32(5));
+		auto const should_return_alignment_graph(PG_GETARG_BOOL(6));
 
-		// Don't leak anything thrown.
+		// Don’t leak anything thrown.
 		try
 		{
 			// Create iterator ranges out of the UTF-8 strings.
@@ -78,28 +108,44 @@ extern "C" {
 			auto const lhs_len(copy_distance(lhsr));
 			auto const rhs_len(copy_distance(rhsr));
 			
-			// Instantiate the aligner.
-			alignment_context_type ctx;
-			auto &aligner(ctx.get_aligner());
-			aligner.set_identity_score(match_score);
-			aligner.set_mismatch_penalty(mismatch_penalty);
-			aligner.set_gap_start_penalty(gap_start_penalty);
-			aligner.set_gap_penalty(gap_penalty);
-			//aligner.set_prints_debugging_information(print_debugging_information);
-			
-			// Align the texts.
-			aligner.align(lhsr, rhsr, lhs_len, rhs_len);
-			ctx.run();
-			
-			// Build the alignment graph.
-			ta::alignment_graph_builder builder;
-			builder.build_graph(lhsr, rhsr, ctx.lhs_gaps(), ctx.rhs_gaps());
-			
-			// Serialize to JSON.
+			// Buffer for the return value.
 			std::ostringstream os;
-			ta::json::to_json(os, builder.text_segments());
-			std::string const &json_buffer(os.str());
 			
+			if (should_return_alignment_graph)
+			{
+				// Instantiate the aligner.
+				alignment_bv_context_type ctx;
+				auto &aligner(ctx.get_aligner());
+				assign_scores(aligner, match_score, mismatch_penalty, gap_start_penalty, gap_penalty);
+				//aligner.set_prints_debugging_information(print_debugging_information);
+			
+				// Align the texts.
+				aligner.align(lhsr, rhsr, lhs_len, rhs_len);
+				ctx.run();
+			
+				// Build the alignment graph.
+				ta::alignment_graph_builder builder;
+				builder.build_graph(lhsr, rhsr, ctx.lhs_gaps(), ctx.rhs_gaps());
+			
+				// Serialize to JSON.
+				ta::json::to_json(os, builder.text_segments());
+			}
+			else
+			{
+				// Instantiate the aligner.
+				alignment_rle_context_type ctx;
+				auto &aligner(ctx.get_aligner());
+				assign_scores(aligner, match_score, mismatch_penalty, gap_start_penalty, gap_penalty);
+				
+				// Align the texts.
+				aligner.align(lhsr, rhsr, lhs_len, rhs_len);
+				ctx.run();
+				
+				// Serialize to JSON.
+				serialize_to_json(ctx, os);
+			}
+			
+			std::string const &json_buffer(os.str());
 			PG_RETURN_TEXT_P(cstring_to_text_with_len(json_buffer.data(), json_buffer.size()));
 		}
 		catch (std::exception const &exc)
