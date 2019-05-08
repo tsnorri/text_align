@@ -15,6 +15,24 @@
 
 namespace text_align { namespace detail {
 	
+	void copy_long_list_to_vector(PyObject *list, std::vector <long> &dst);
+	
+	void run_builder_list(
+		alignment_graph_builder &builder,
+		PyObject *lhso,
+		PyObject *rhso,
+		libbio::bit_bector &lhs_gaps,
+		libbio::bit_vector &rhs_gaps
+	);
+	
+	void run_builder_string(
+		alignment_graph_builder &builder,
+		PyObject *lhso,
+		PyObject *rhso,
+		libbio::bit_bector &lhs_gaps,
+		libbio::bit_vector &rhs_gaps
+	);
+	
 	struct span_from_buffer
 	{
 		template <typename t_data, typename t_fn>
@@ -74,6 +92,41 @@ namespace text_align { namespace detail {
 			};
 		}
 	};
+	
+	
+	template <typename t_aligner_context, typename t_lhs, typename t_rhs>
+	void run_aligner_(t_aligner_context &ctx, t_lhs const &lhs, t_rhs const &rhs)
+	{
+		if (ctx.stopped())
+			ctx.restart();
+		
+		ctx.get_aligner().align(lhss, rhss);
+		ctx.run();
+	}
+	
+	
+	template <typename t_aligner_context>
+	void run_aligner_string(t_aligner_context &ctx, PyObject *lhso, PyObject *rhso)
+	{
+		// Convert the Python strings to spans.
+		libbio::map_on_stack_fn <detail::span_from_buffer>(
+			[&ctx](auto const &lhss, auto const &rhss) {
+				run_aligner_(ctx, lhss, rhss);
+			},
+			lhso, rhso
+		);
+	}
+	
+	
+	template <typename t_aligner_context>
+	void run_aligner_list(t_aligner_context &ctx, PyObject *lhso, PyObject *rhso)
+	{
+		std::vector <long> lhs, rhs;
+		copy_long_list_to_vector(lhso, lhs);
+		copy_long_list_to_vector(rhso, rhs);
+		
+		run_aligner_(ctx, lhs, rhs);
+	}
 }}
 
 
@@ -82,17 +135,12 @@ namespace text_align
 	template <typename t_aligner_context>
 	void run_aligner(t_aligner_context &ctx, PyObject *lhso, PyObject *rhso)
 	{
-		// Convert the Python strings to spans.
-		libbio::map_on_stack_fn <detail::span_from_buffer>(
-			[&ctx](auto const &lhss, auto const &rhss) {
-				if (ctx.stopped())
-					ctx.restart();
-				
-				ctx.get_aligner().align(lhss, rhss);
-				ctx.run();
-			},
-			lhso, rhso
-		);
+		if (PyList_Check(lhso) && PyList_Check(rhso))
+			detail::run_aligner_list(ctx, lhso, rhso);
+		else if (PyUnicode_Check(lhso) && PyUnicode_Check(rhso))
+			detail::run_aligner_string(ctx, lhso, rhso);
+		else
+			throw std::runtime_error("Unexpected Python object type");
 	}
 	
 	
@@ -101,18 +149,13 @@ namespace text_align
 	{
 		auto &lhs_gaps(ctx.lhs_gaps());
 		auto &rhs_gaps(ctx.rhs_gaps());
-		// Convert the Python strings to spans. Throw if the vectors are not convertible to bit_vectors.
-		libbio::map_on_stack_fn <detail::span_from_buffer>(
-			[&builder, &lhs_gaps, &rhs_gaps](auto const &lhss, auto const &rhss) {
-				builder.build_graph(
-					lhss,
-					rhss,
-					dynamic_cast <libbio::bit_vector const &>(lhs_gaps),
-					dynamic_cast <libbio::bit_vector const &>(rhs_gaps)
-				);
-			},
-			lhso, rhso
-		);
+		
+		if (PyList_Check(lhso) && PyList_Check(rhso))
+			detail::run_builder_list(builder, lhso, rhso, lhs_gaps, rhs_gaps);
+		else if (PyUnicode_Check(lhso) && PyUnicode_Check(rhso))
+			detail::run_builder_string(builder, lhso, rhso, lhs_gaps, rhs_gaps);
+		else
+			throw std::runtime_error("Unexpected Python object type");
 	}
 }
 
