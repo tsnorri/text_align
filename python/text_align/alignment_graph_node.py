@@ -27,6 +27,10 @@ class CommonNode(NodeBase):
 	def type():
 		return NodeType.COMMON
 	
+	@property
+	def max_length():
+		return len(self.text)
+	
 	def __str__(self):
 		return "{text: '%s'}" % "".join(self.text)
 	
@@ -42,6 +46,19 @@ class DistinctNode(NodeBase):
 	@property
 	def type():
 		return NodeType.DISTINCT
+	
+	@property
+	def max_length():
+		lhs_len = len(self.lhs)
+		rhs_len = len(self.rhs)
+		if lhs_len < rhs_len:
+			return rhs_len
+		else:
+			return lhs_len
+
+	@property
+	def max_length():
+		return len(self.text)
 	
 	def __str__(self):
 		return "{lhs: '%s', rhs: '%s'}" % ("".join(self.lhs), "".join(self.rhs))
