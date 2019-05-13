@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Tuukka Norri
+# Copyright (c) 2018-2019 Tuukka Norri
 # This code is licensed under MIT license (see LICENSE for details).
 
 from enum import Enum
@@ -12,7 +12,7 @@ class NodeType(Enum):
 
 class NodeBase(object):
 	@property
-	def type():
+	def type(self):
 		return NodeType.NONE
 	
 	def toJSON(self):
@@ -24,11 +24,11 @@ class CommonNode(NodeBase):
 		self.text = text
 	
 	@property
-	def type():
+	def type(self):
 		return NodeType.COMMON
 	
 	@property
-	def max_length():
+	def max_length(self):
 		return len(self.text)
 	
 	def __str__(self):
@@ -44,21 +44,17 @@ class DistinctNode(NodeBase):
 		self.rhs = rhs
 	
 	@property
-	def type():
+	def type(self):
 		return NodeType.DISTINCT
 	
 	@property
-	def max_length():
+	def max_length(self):
 		lhs_len = len(self.lhs)
 		rhs_len = len(self.rhs)
 		if lhs_len < rhs_len:
 			return rhs_len
 		else:
 			return lhs_len
-
-	@property
-	def max_length():
-		return len(self.text)
 	
 	def __str__(self):
 		return "{lhs: '%s', rhs: '%s'}" % ("".join(self.lhs), "".join(self.rhs))
