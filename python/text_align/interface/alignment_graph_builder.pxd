@@ -8,7 +8,7 @@ from libcpp.memory cimport unique_ptr
 from libcpp.vector cimport vector
 from .int_vector cimport bit_vector
 
-include "char32_t.pxi"
+include "../char32_t.pxi"
 
 
 cdef extern from "<text_align/alignment_graph_builder.hh>" namespace "text_align::alignment_graph::node_type":

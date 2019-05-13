@@ -9,12 +9,12 @@
 #include <text_align/smith_waterman/aligner.hh>
 
 
-namespace text_align { namespace detail {
+namespace text_align { namespace python { namespace detail {
 	struct no_op {};
-}}
+}}}
 
 
-namespace text_align {
+namespace text_align { namespace python {
 	
 	struct unit_alignment_scorer_base
 	{
@@ -27,7 +27,7 @@ namespace text_align {
 	};
 	
 	
-	class python_alignment_context_base: public virtual unit_alignment_scorer_base
+	class alignment_context_base: public virtual unit_alignment_scorer_base
 	{
 	public:
 		typedef std::uint64_t						word_type;
@@ -39,12 +39,12 @@ namespace text_align {
 		std::unique_ptr <bit_vector_type>			m_rhs_gaps;
 		
 	public:
-		python_alignment_context_base():
+		alignment_context_base():
 			m_ctx()
 		{
 		}
 		
-		python_alignment_context_base(std::size_t const num_threads):
+		alignment_context_base(std::size_t const num_threads):
 			m_ctx(num_threads)
 		{
 		}
@@ -76,24 +76,24 @@ namespace text_align {
 	
 	
 	template <template <typename, typename, typename> typename t_aligner, typename t_score, typename t_base>
-	class python_alignment_context_tpl final : public python_alignment_context_base, public t_base
+	class alignment_context_tpl final : public alignment_context_base, public t_base
 	{
 	public:
-		typedef t_aligner <t_score, std::uint64_t, python_alignment_context_tpl> aligner_type;
+		typedef t_aligner <t_score, std::uint64_t, alignment_context_tpl> aligner_type;
 		
 	protected:
 		aligner_type	m_aligner;
 		
 	public:
-		python_alignment_context_tpl():
-			python_alignment_context_base(),
+		alignment_context_tpl():
+			alignment_context_base(),
 			t_base(),
 			m_aligner(this->m_ctx, *this)
 		{
 		}
 		
-		python_alignment_context_tpl(std::size_t const num_threads):
-			python_alignment_context_base(num_threads),
+		alignment_context_tpl(std::size_t const num_threads):
+			alignment_context_base(num_threads),
 			t_base(),
 			m_aligner(this->m_ctx, *this)
 		{
@@ -141,17 +141,17 @@ namespace text_align {
 	};
 	
 	
-	typedef python_alignment_context_tpl <
+	typedef alignment_context_tpl <
 		smith_waterman::aligner,
 		std::int32_t,
 		detail::no_op
-	> python_alignment_context;
+	> alignment_context;
 	
-	typedef python_alignment_context_tpl <
+	typedef alignment_context_tpl <
 		smith_waterman::aligner,
 		float,
 		alignment_scorer
-	> python_scoring_fp_alignment_context;
-}
+	> scoring_fp_alignment_context;
+}}
 
 #endif

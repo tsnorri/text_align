@@ -11,12 +11,10 @@ from libcpp.map cimport map
 from libcpp.memory cimport unique_ptr
 from libcpp.pair cimport pair
 from libcpp.vector cimport vector
-from .alignment_graph_builder cimport alignment_graph_builder, common_node, distinct_node, COMMON, DISTINCT
+from . cimport interface as cxx
+from .alignment_context cimport alignment_context_base, alignment_context, scoring_fp_alignment_context
 from .alignment_graph_node import CommonNode, DistinctNode
 from .cast_bit_vector cimport cast #to_rle_bit_vector
-from .int_vector cimport bit_vector
-from .python_alignment_context cimport python_alignment_context_base, python_alignment_context, python_scoring_fp_alignment_context
-from .rle_bit_vector cimport rle_bit_vector
 from .run_aligner cimport run_aligner, run_builder, process_alignment_graph
 
 include "char32_t.pxi"
@@ -31,7 +29,7 @@ cdef public void handle_distinct_node(object dst, object lhs, object rhs):
 	dst.append(node)
 
 
-cdef class AlignmentContext(object):
+cdef class Aligner(object):
 	
 	cdef object lhs
 	cdef object rhs
@@ -64,12 +62,12 @@ cdef class AlignmentContext(object):
 		return 0.0
 
 
-cdef class SmithWatermanAlignmentContextBase(AlignmentContext):
+cdef class SmithWatermanAlignerBase(Aligner):
 
-	cdef python_alignment_context_base *get_context(self):
+	cdef alignment_context_base *get_context(self):
 		raise NotImplementedError("Not implemented in base class")
 	
-	cdef convert_rle_vector(self, const rle_bit_vector[uint32_t] &vec_ref):
+	cdef convert_rle_vector(self, const cxx.rle_bit_vector[uint32_t] &vec_ref):
 		retval = []
 		vec = vec_ref.to_run_vector()
 		it = vec.const_begin()
@@ -94,17 +92,17 @@ cdef class SmithWatermanAlignmentContextBase(AlignmentContext):
 		return self.convert_rle_vector(c.to_rle_bit_vector_fr(deref(self.get_context()).rhs_gaps()))
 
 
-cdef class SmithWatermanAlignmentContext(SmithWatermanAlignmentContextBase):
+cdef class SmithWatermanAligner(SmithWatermanAlignerBase):
 	
-	cdef unique_ptr[python_alignment_context] ctx
+	cdef unique_ptr[alignment_context] ctx
 	
 	def __cinit__(self):
 		# In-place construction does not seem to be possible in Cython;
 		# hence the use of operator new.
 		# Apparently super’s implementation is called automatically.
-		self.ctx.reset(new python_alignment_context())
+		self.ctx.reset(new alignment_context())
 
-	cdef python_alignment_context_base *get_context(self):
+	cdef alignment_context_base *get_context(self):
 		return self.ctx.get()
 		
 	def align(self):
@@ -114,21 +112,21 @@ cdef class SmithWatermanAlignmentContext(SmithWatermanAlignmentContextBase):
 	
 	def make_alignment_graph(self):
 		"""Return the alignment as a graph."""
-		cdef unique_ptr[alignment_graph_builder[char32_t]] builder
+		cdef unique_ptr[cxx.alignment_graph_builder[char32_t]] builder
 		run_builder(deref(builder), deref(self.ctx), self.lhs, self.rhs)
 		return process_alignment_graph(deref(builder))
 	
 	def setup_bit_vectors(self):
 		"""Use bit vectors for gaps."""
 		self.has_bit_vectors = True
-		deref(self.ctx).instantiate_lhs_gaps[bit_vector]()
-		deref(self.ctx).instantiate_rhs_gaps[bit_vector]()
+		deref(self.ctx).instantiate_lhs_gaps[cxx.bit_vector]()
+		deref(self.ctx).instantiate_rhs_gaps[cxx.bit_vector]()
 	
 	def setup_run_vectors(self):
 		"""Use run vectors for gaps."""
 		self.has_bit_vectors = True
-		deref(self.ctx).instantiate_lhs_gaps[rle_bit_vector[uint32_t]]()
-		deref(self.ctx).instantiate_rhs_gaps[rle_bit_vector[uint32_t]]()
+		deref(self.ctx).instantiate_lhs_gaps[cxx.rle_bit_vector[uint32_t]]()
+		deref(self.ctx).instantiate_rhs_gaps[cxx.rle_bit_vector[uint32_t]]()
 	
 	@property
 	def identity_score(self):
@@ -184,14 +182,14 @@ cdef class SmithWatermanAlignmentContext(SmithWatermanAlignmentContextBase):
 		deref(self.ctx).get_aligner().alignment_score()
 
 
-cdef class SmithWatermanScoringFpAlignmentContext(SmithWatermanAlignmentContextBase):
+cdef class SmithWatermanScoringFpAligner(SmithWatermanAlignerBase):
 	
-	cdef unique_ptr[python_scoring_fp_alignment_context] ctx
+	cdef unique_ptr[scoring_fp_alignment_context] ctx
 
 	def __cinit__(self):
-		self.ctx.reset(new python_scoring_fp_alignment_context())
+		self.ctx.reset(new scoring_fp_alignment_context())
 
-	cdef python_alignment_context_base *get_context(self):
+	cdef alignment_context_base *get_context(self):
 		return self.ctx.get()
 	
 	def set_similarity(self, object similarity_map):
@@ -207,19 +205,19 @@ cdef class SmithWatermanScoringFpAlignmentContext(SmithWatermanAlignmentContextB
 	
 	def make_alignment_graph(self):
 		"""Return the alignment as a graph."""
-		cdef unique_ptr[alignment_graph_builder[long]] builder
+		cdef unique_ptr[cxx.alignment_graph_builder[long]] builder
 		run_builder(deref(builder), deref(self.ctx), self.lhs, self.rhs)
 		return process_alignment_graph(deref(builder))
 	
 	def setup_bit_vectors(self):
 		"""Use bit vectors for gaps."""
-		deref(self.ctx).instantiate_lhs_gaps[bit_vector]()
-		deref(self.ctx).instantiate_rhs_gaps[bit_vector]()
+		deref(self.ctx).instantiate_lhs_gaps[cxx.bit_vector]()
+		deref(self.ctx).instantiate_rhs_gaps[cxx.bit_vector]()
 	
 	def setup_run_vectors(self):
 		"""Use run vectors for gaps."""
-		deref(self.ctx).instantiate_lhs_gaps[rle_bit_vector[uint32_t]]()
-		deref(self.ctx).instantiate_rhs_gaps[rle_bit_vector[uint32_t]]()
+		deref(self.ctx).instantiate_lhs_gaps[cxx.rle_bit_vector[uint32_t]]()
+		deref(self.ctx).instantiate_rhs_gaps[cxx.rle_bit_vector[uint32_t]]()
 	
 	# FIXME: come up with a way to move these to an included file.
 	@property
