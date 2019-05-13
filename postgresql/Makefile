@@ -8,6 +8,7 @@ SHLIB_LINK	:= $(LDFLAGS) -L../libtextalign -ltextalign -L../lib/libbio/src -lbio
 EXTENSION	= text_align
 MODULE_big	= text_align
 OBJS		= text_align.o
+PG_CXXFLAGS	= -std=c++17
 PGXS		:= $(shell $(PG_CONFIG) --pgxs)
 
 include $(PGXS)

@@ -124,7 +124,7 @@ extern "C" {
 				ctx.run();
 			
 				// Build the alignment graph.
-				ta::alignment_graph_builder builder;
+				ta::alignment_graph_builder <char32_t> builder;
 				builder.build_graph(lhsr, rhsr, ctx.lhs_gaps(), ctx.rhs_gaps());
 			
 				// Serialize to JSON.
