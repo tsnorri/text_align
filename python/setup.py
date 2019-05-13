@@ -16,7 +16,7 @@ include_dirs.extend(os.environ["INCLUDE_DIRS"].split(" "))
 include_dirs = remove_empty(include_dirs)
 
 extensions = [
-	Extension("*", ["text_align/*.pyx", "text_align/*.cc"],
+	Extension("*", ["text_align/*.pyx", "text_align/run_aligner.cc"],
 		language			= 'c++',
 		extra_compile_args	= from_environment("EXTRA_CXXFLAGS"),
 		extra_link_args		= from_environment("EXTRA_LDFLAGS"),

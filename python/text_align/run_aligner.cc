@@ -6,10 +6,13 @@
 #ifndef TEXT_ALIGN_COPY_PYTHON_LIST_HH
 #define TEXT_ALIGN_COPY_PYTHON_LIST_HH
 
+#include <algorithm>
+#include <range/v3/view/enumerate.hpp>
 #include "run_aligner.hh"
 
 
 namespace text_align { namespace detail {
+	
 	void copy_long_list_to_vector(PyObject *list, std::vector <long> &dst)
 	{
 		auto const len(PyList_GET_SIZE(list));
@@ -25,37 +28,28 @@ namespace text_align { namespace detail {
 	}
 	
 	
-	void run_builder_list(
-		alignment_graph_builder &builder,
-		PyObject *lhso,
-		PyObject *rhso,
-		libbio::bit_bector &lhs_gaps,
-		libbio::bit_vector &rhs_gaps
-	)
+	PyObject *copy_long_vector_to_list(std::vector <long> const &src)
 	{
-		std::vector <long> lhs, rhs;
-		copy_long_list_to_vector(lhso, lhs);
-		copy_long_list_to_vector(rhso, rhs);
+		auto *retval(PyList_New(src.size()));
 		
-		builder.build_graph(lhs, rhs, lhs_gaps, rhs_gaps);
+		for (auto const &[idx, val] : ranges::view::enumerate(src))
+		{
+			PyObject* pyval(PyLong_FromLong(val));
+			if (!pyval)
+				throw std::runtime_error("Unable to create a Python long");
+			
+			if (0 != PyList_SetItem(retval, idx, pyval)) // Consumes a reference to pyval.
+				throw std::runtime_error("Unable to set a list item");
+		}
+		
+		return retval;
 	}
 	
 	
-	void run_builder_string(
-		alignment_graph_builder &builder,
-		PyObject *lhso,
-		PyObject *rhso,
-		libbio::bit_bector &lhs_gaps,
-		libbio::bit_vector &rhs_gaps
-	)
+	PyObject *copy_char32_vector_to_unicode(std::vector <char32_t> const &src)
 	{
-		// Convert the Python strings to spans. Throw if the vectors are not convertible to bit_vectors.
-		libbio::map_on_stack_fn <detail::span_from_buffer>(
-			[&builder, &lhs_gaps, &rhs_gaps](auto const &lhss, auto const &rhss) {
-				builder.build_graph(lhss, rhss, lhs_gaps, rhs_gaps);
-			},
-			lhso, rhso
-		);
+		static_assert(4 == sizeof(char32_t));
+		return PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, src.data(), src.size());
 	}
 }}
 

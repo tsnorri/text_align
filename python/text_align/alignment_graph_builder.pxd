@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Tuukka Norri
+# Copyright (c) 2018-2019 Tuukka Norri
 # This code is licensed under MIT license (see LICENSE for details).
 
 # cython: language_level=3
@@ -22,17 +22,17 @@ cdef extern from "<text_align/alignment_graph_builder.hh>" namespace "text_align
 	cdef cppclass node_base:
 		node_type type()
 
-	cdef cppclass common_node(node_base):
-		const vector[char32_t] &code_points()
+	cdef cppclass common_node[t_character](node_base):
+		const vector[t_character] &text()
 	
-	cdef cppclass distinct_node(node_base):
-		const vector[char32_t] &code_points_lhs()
-		const vector[char32_t] &code_points_rhs()
+	cdef cppclass distinct_node[t_character](node_base):
+		const vector[t_character] &text_lhs()
+		const vector[t_character] &text_rhs()
 
 
 cdef extern from "<text_align/alignment_graph_builder.hh>" namespace "text_align":
 
-	cdef cppclass alignment_graph_builder:
+	cdef cppclass alignment_graph_builder[t_character]:
 		alignment_graph_builder() except+
 		
 		const vector[unique_ptr[node_base]] &text_segments()

@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Tuukka Norri
+# Copyright (c) 2018-2019 Tuukka Norri
 # This code is licensed under MIT license (see LICENSE for details).
 
 # cython: language_level=3
@@ -32,20 +32,3 @@ cdef extern from "<text_align/smith_waterman/aligner.hh>" namespace "text_align:
 		void align[t_string](const t_string &, const t_string &)
 		
 		t_score alignment_score() const
-
-
-cdef extern from "<text_align/smith_waterman/alignment_context_pv.hh>" namespace "text_align::smith_waterman":
-
-	cdef cppclass alignment_context_pv[t_score, t_word]:
-		alignment_context() except +
-		void run() except +
-		void restart() except +
-		bool stopped() except +
-		
-		aligner[t_score, t_word, alignment_context_pv[t_score, t_word]] &get_aligner()
-
-		const bit_vector_interface[t_word] &lhs_gaps() except +
-		const bit_vector_interface[t_word] &rhs_gaps() except +
-
-		void instantiate_lhs_gaps[t_lhs]() except +
-		void instantiate_rhs_gaps[t_rhs]() except +

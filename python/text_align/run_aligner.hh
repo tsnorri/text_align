@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Tuukka Norri
+ * Copyright (c) 2018-2019 Tuukka Norri
  * This code is licensed under MIT license (see LICENSE for details).
  */
 
@@ -9,6 +9,7 @@
 #include <boost/beast/core/span.hpp>
 #include <libbio/map_on_stack.hh>
 #include <libbio/rle_bit_vector.hh>
+#include <Python.h>
 #include <text_align/alignment_graph_builder.hh>
 #include <text_align/smith_waterman/aligner.hh>
 
@@ -17,21 +18,9 @@ namespace text_align { namespace detail {
 	
 	void copy_long_list_to_vector(PyObject *list, std::vector <long> &dst);
 	
-	void run_builder_list(
-		alignment_graph_builder &builder,
-		PyObject *lhso,
-		PyObject *rhso,
-		libbio::bit_bector &lhs_gaps,
-		libbio::bit_vector &rhs_gaps
-	);
+	PyObject *copy_long_vector_to_list(std::vector <long> const &src);
+	PyObject *copy_char32_vector_to_unicode(std::vector <char32_t> const &src);
 	
-	void run_builder_string(
-		alignment_graph_builder &builder,
-		PyObject *lhso,
-		PyObject *rhso,
-		libbio::bit_bector &lhs_gaps,
-		libbio::bit_vector &rhs_gaps
-	);
 	
 	struct span_from_buffer
 	{
@@ -94,13 +83,49 @@ namespace text_align { namespace detail {
 	};
 	
 	
+	template <typename t_character>
+	void run_builder_string(
+		alignment_graph_builder <t_character> &builder,
+		PyObject *lhso,
+		PyObject *rhso,
+		libbio::bit_vector &lhs_gaps,
+		libbio::bit_vector &rhs_gaps
+	)
+	{
+		// Convert the Python strings to spans. Throw if the vectors are not convertible to bit_vectors.
+		libbio::map_on_stack_fn <detail::span_from_buffer>(
+			[&builder, &lhs_gaps, &rhs_gaps](auto const &lhss, auto const &rhss) {
+				builder.build_graph(lhss, rhss, lhs_gaps, rhs_gaps);
+			},
+			lhso, rhso
+		);
+	}
+	
+	
+	template <typename t_character>
+	void run_builder_list(
+		alignment_graph_builder <t_character> &builder,
+		PyObject *lhso,
+		PyObject *rhso,
+		libbio::bit_vector &lhs_gaps,
+		libbio::bit_vector &rhs_gaps
+	)
+	{
+		std::vector <long> lhs, rhs;
+		copy_long_list_to_vector(lhso, lhs);
+		copy_long_list_to_vector(rhso, rhs);
+		
+		builder.build_graph(lhs, rhs, lhs_gaps, rhs_gaps);
+	}
+	
+	
 	template <typename t_aligner_context, typename t_lhs, typename t_rhs>
 	void run_aligner_(t_aligner_context &ctx, t_lhs const &lhs, t_rhs const &rhs)
 	{
 		if (ctx.stopped())
 			ctx.restart();
 		
-		ctx.get_aligner().align(lhss, rhss);
+		ctx.get_aligner().align(lhs, rhs);
 		ctx.run();
 	}
 	
@@ -127,6 +152,24 @@ namespace text_align { namespace detail {
 		
 		run_aligner_(ctx, lhs, rhs);
 	}
+	
+	
+	template <typename t_character>
+	struct process_node_characters {};
+	
+	template <>
+	struct process_node_characters <std::vector <long>>
+	{
+		typedef std::vector <long>		vector_type;
+		static PyObject *process(vector_type const &vec) { return copy_long_vector_to_list(vec); }
+	};
+	
+	template <>
+	struct process_node_characters <std::vector <char32_t>>
+	{
+		typedef std::vector <char32_t>	vector_type;
+		static PyObject *process(vector_type const &vec) { return copy_char32_vector_to_unicode(vec); }
+	};
 }}
 
 
@@ -144,11 +187,12 @@ namespace text_align
 	}
 	
 	
-	template <typename t_aligner_context>
-	void run_builder(alignment_graph_builder &builder, t_aligner_context const &ctx, PyObject *lhso, PyObject *rhso)
+	template <typename t_character, typename t_aligner_context>
+	void run_builder(alignment_graph_builder <t_character> &builder, t_aligner_context &ctx, PyObject *lhso, PyObject *rhso)
 	{
-		auto &lhs_gaps(ctx.lhs_gaps());
-		auto &rhs_gaps(ctx.rhs_gaps());
+		// Builder requires bit vectors (as opposed to RLE vectors).
+		auto &lhs_gaps(dynamic_cast <libbio::bit_vector &>(ctx.lhs_gaps()));
+		auto &rhs_gaps(dynamic_cast <libbio::bit_vector &>(ctx.rhs_gaps()));
 		
 		if (PyList_Check(lhso) && PyList_Check(rhso))
 			detail::run_builder_list(builder, lhso, rhso, lhs_gaps, rhs_gaps);
@@ -156,6 +200,53 @@ namespace text_align
 			detail::run_builder_string(builder, lhso, rhso, lhs_gaps, rhs_gaps);
 		else
 			throw std::runtime_error("Unexpected Python object type");
+	}
+	
+	
+	template <typename t_character>
+	PyObject *process_alignment_graph(alignment_graph_builder <t_character> const &builder)
+	{
+		struct visitor : public alignment_graph::node_visitor
+		{
+			PyObject *dst{};
+			
+			visitor(Py_ssize_t const size):
+				dst(PyList_New(size))
+			{
+				if (!dst)
+					throw std::runtime_error("Unable to create a Python list");
+			}
+			
+			virtual void visit_common_node(alignment_graph::node_base &nb) override
+			{
+				typedef alignment_graph::common_node <t_character> node_type;
+				typedef detail::process_node_characters <typename node_type::vector_type> pn_type;
+				auto const &node(static_cast <node_type &>(nb));
+				auto *characters(pn_type::process(node.characters()));
+				
+				// From alignment_context.h
+				handle_common_node(dst, characters);
+			}
+			
+			virtual void visit_distinct_node(alignment_graph::node_base &nb) override
+			{
+				typedef alignment_graph::distinct_node <t_character> node_type;
+				typedef detail::process_node_characters <typename node_type::vector_type> pn_type;
+				auto const &node(static_cast <node_type &>(nb));
+				auto *characters_lhs(pn_type::process(node.characters_lhs()));
+				auto *characters_rhs(pn_type::process(node.characters_rhs()));
+				
+				// From alignment_context.h
+				handle_distinct_node(dst, characters_lhs, characters_rhs);
+			}
+		};
+		
+		auto const &text_segments(builder.text_segments());
+		visitor visitor(text_segments.size());
+		for (auto const &seg : text_segments)
+			seg->visit(visitor);
+		
+		return visitor.dst;
 	}
 }
 
