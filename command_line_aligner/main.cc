@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Tuukka Norri
+ * Copyright (c) 2018-2019 Tuukka Norri
  * This code is licensed under MIT license (see LICENSE for details).
  */
 
@@ -15,7 +15,6 @@
 #include <string>
 #include <text_align/code_point_iterator.hh>
 #include <text_align/smith_waterman/aligner.hh>
-#include <text_align/smith_waterman/alignment_context.hh>
 #include <vector>
 
 #include "cmdline.h"
