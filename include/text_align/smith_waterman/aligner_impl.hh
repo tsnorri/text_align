@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Tuukka Norri
+ * Copyright (c) 2018-2019 Tuukka Norri
  * This code is licensed under MIT license (see LICENSE for details).
  */
 
@@ -8,6 +8,10 @@
 
 #include <text_align/smith_waterman/aligner_impl_base.hh>
 #include <text_align/smith_waterman/matrix_printer.hh>
+
+// FIXME: move to a compatibility header.
+#include <experimental/type_traits>
+namespace std { using ::std::experimental::is_detected_v; }
 
 
 namespace text_align { namespace smith_waterman { namespace detail {
@@ -29,6 +33,17 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			UNSET	= 0x0,
 			LEFT	= 0x1,
 			UP		= 0x2
+		};
+		
+		// Delegate member functions.
+		template <typename t_lhs_c, typename t_rhs_c>
+		struct score_pair_tpl
+		{
+			template <typename t_class>
+			using score_pair_t = std::integral_constant <
+				score_type (t_class::*)(t_lhs_c const, t_rhs_c const),
+				&t_class::score_pair
+			>;
 		};
 		
 	protected:
@@ -76,6 +91,9 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			score_type gap_score_rhs,
 			score_result_type &result					// Out
 		) const;
+		
+		template <typename t_lhs_c, typename t_rhs_c>
+		inline score_type score_pair(t_lhs_c const lhs_c, t_rhs_c const rhs_c) const;
 		
 		template <bool t_initial, typename t_iterator, typename t_rhs_c>
 		inline void calculate_score_and_update_gap_scores(
@@ -125,6 +143,27 @@ namespace text_align { namespace smith_waterman { namespace detail {
 	
 	template <typename t_owner, typename t_lhs, typename t_rhs>
 	template <typename t_lhs_c, typename t_rhs_c>
+	auto aligner_impl <t_owner, t_lhs, t_rhs>::score_pair(
+		t_lhs_c const lhs_c,
+		t_rhs_c const rhs_c
+	) const -> score_type
+	{
+		if constexpr (std::is_detected_v <score_pair_tpl <t_lhs_c, t_rhs_c>::template score_pair_t, typename t_owner::delegate_type>)
+		{
+			auto const &delegate(this->m_owner->delegate());
+			return delegate.score_pair(lhs_c, rhs_c);
+		}
+		else
+		{
+			auto const identity_score(this->m_parameters->identity_score);
+			auto const mismatch_penalty(this->m_parameters->mismatch_penalty);
+			return (libbio::is_equal(lhs_c, rhs_c) ? identity_score : mismatch_penalty);
+		}
+	}
+	
+	
+	template <typename t_owner, typename t_lhs, typename t_rhs>
+	template <typename t_lhs_c, typename t_rhs_c>
 	void aligner_impl <t_owner, t_lhs, t_rhs>::calculate_score(
 		score_type const prev_diag_score,
 		t_lhs_c const lhs_c,
@@ -134,8 +173,6 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		score_result_type &result
 	) const
 	{
-		auto const identity_score(this->m_parameters->identity_score);
-		auto const mismatch_penalty(this->m_parameters->mismatch_penalty);
 		auto const gap_penalty(this->m_parameters->gap_penalty);
 		auto const gap_start_penalty(this->m_parameters->gap_start_penalty);
 		
@@ -143,7 +180,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		gap_score_lhs += gap_penalty;
 		gap_score_rhs += gap_penalty;
 		
-		auto const s1(prev_diag_score + (libbio::is_equal(lhs_c, rhs_c) ? identity_score : mismatch_penalty));
+		auto const s1(prev_diag_score + score_pair(lhs_c, rhs_c));
 		auto const s2(gap_score_lhs);	// Lhs string
 		auto const s3(gap_score_rhs);	// Rhs string
 		

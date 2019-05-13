@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Tuukka Norri
+ * Copyright (c) 2018-2019 Tuukka Norri
  * This code is licensed under MIT license (see LICENSE for details).
  */
 
@@ -29,8 +29,7 @@ namespace text_align { namespace smith_waterman {
 	template <typename t_score, typename t_word, typename t_delegate>
 	class aligner final : public aligner_base
 	{
-		static_assert(std::is_integral_v <t_score>, "Expected t_score to be a signed integer type.");
-		static_assert(std::is_signed_v <t_score>, "Expected t_score to be a signed integer type.");
+		static_assert(std::is_signed_v <t_score>, "Expected t_score to be a signed type.");
 		
 		friend detail::aligner_data <aligner>;
 		friend detail::aligner_sample <aligner>;
@@ -42,9 +41,7 @@ namespace text_align { namespace smith_waterman {
 	protected:
 		typedef aligner_base::arrow_type arrow_type;
 		
-		enum {
-			SCORE_MIN		= std::numeric_limits <t_score>::min()
-		};
+		static constexpr t_score const SCORE_MIN = std::numeric_limits <t_score>::min();
 
 		typedef t_word										word_type;
 		typedef t_score										score_type;
@@ -93,6 +90,8 @@ namespace text_align { namespace smith_waterman {
 			m_delegate(&delegate)
 		{
 		}
+		
+		delegate_type &delegate() const { return *m_delegate; }
 		
 		score_type identity_score() const { return m_parameters.identity_score; }
 		score_type mismatch_penalty() const { return m_parameters.mismatch_penalty; }
