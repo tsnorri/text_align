@@ -91,7 +91,7 @@ def root():
 def align():
 	# Convert the files’ contents to Unicode strings.
 	try:
-		ctx = text_align.SmithWatermanAlignmentContext()
+		ctx = text_align.SmithWatermanAligner()
 		shouldCreateAlignmentGraph = processAlignerInput(request, ctx)
 		
 		# Run the aligner.
