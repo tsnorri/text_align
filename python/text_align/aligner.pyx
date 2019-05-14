@@ -56,10 +56,20 @@ cdef class Aligner(object):
 	def rhs(self, string):
 		self.rhs = string
 	
-	# FIXME: write me.
 	@property
 	def scaled_alignment_score(self):
-		return 0.0
+		"""Scale the alignment score to [0, 1]."""
+		# Interpret the identity score as the maximum of the scoring matrix, if one has been given.
+		max_ch_score = self.identity_score
+		
+		# Suppose the given strings have distinct lengths. In this case, the length difference must
+		# consist of non-matching characters. If mismatch and gap penalties are non-positive,
+		# the non-matching part cannot increase the score. Therefore the maximum is max_ch_score
+		# multiplied by the length of the shorter string.
+		min_len = min(len(self.lhs), len(self.rhs))
+		max_score = float(max_ch_score * min_len)
+		
+		return self.alignment_score / max_score
 
 
 cdef class SmithWatermanAlignerBase(Aligner):
