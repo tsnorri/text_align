@@ -49,7 +49,7 @@ namespace text_align { namespace detail {
 	PyObject *copy_char32_vector_to_unicode(std::vector <char32_t> const &src)
 	{
 		static_assert(4 == sizeof(char32_t));
-		return PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, src.data(), src.size());
+		return PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, src.data(), src.size()); // Returns a new reference.
 	}
 }}
 

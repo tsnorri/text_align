@@ -13,6 +13,17 @@
 #include <text_align/alignment_graph_builder.hh>
 #include <text_align/smith_waterman/aligner.hh>
 
+// Cython tries to not include this file when the file passed to the C++ compiler is
+// the compiled .pyx file, but we need it.
+#undef __PYX_HAVE__text_align__aligner
+#ifdef __PYX_HAVE_API__text_align__aligner
+#	undef __PYX_HAVE_API__text_align__aligner
+#	include "aligner.h"
+#	define __PYX_HAVE_API__text_align__aligner
+#else
+#	include "aligner.h"
+#endif
+
 
 namespace text_align { namespace detail {
 	
@@ -204,14 +215,16 @@ namespace text_align
 	
 	
 	template <typename t_character>
-	PyObject *process_alignment_graph(alignment_graph_builder <t_character> const &builder)
+	void process_alignment_graph(alignment_graph_builder <t_character> const &builder, PyObject *dst)
 	{
+		libbio_always_assert(PyList_Check(dst));
+		
 		struct visitor : public alignment_graph::node_visitor
 		{
 			PyObject *dst{};
 			
-			visitor(Py_ssize_t const size):
-				dst(PyList_New(size))
+			visitor(PyObject *dst_):
+				dst(dst_)
 			{
 				if (!dst)
 					throw std::runtime_error("Unable to create a Python list");
@@ -224,8 +237,11 @@ namespace text_align
 				auto const &node(static_cast <node_type &>(nb));
 				auto *characters(pn_type::process(node.characters()));
 				
-				// From alignment_context.h
-				handle_common_node(dst, characters);
+				// From aligner.h
+				::handle_common_node(dst, characters);
+				
+				// FIXME: wrap into a smart pointer?
+				Py_DECREF(characters);
 			}
 			
 			virtual void visit_distinct_node(alignment_graph::node_base &nb) override
@@ -236,17 +252,19 @@ namespace text_align
 				auto *characters_lhs(pn_type::process(node.characters_lhs()));
 				auto *characters_rhs(pn_type::process(node.characters_rhs()));
 				
-				// From alignment_context.h
-				handle_distinct_node(dst, characters_lhs, characters_rhs);
+				// From aligner.h
+				::handle_distinct_node(dst, characters_lhs, characters_rhs);
+				
+				// FIXME: wrap into a smart pointer?
+				Py_DECREF(characters_lhs);
+				Py_DECREF(characters_rhs);
 			}
 		};
 		
 		auto const &text_segments(builder.text_segments());
-		visitor visitor(text_segments.size());
+		visitor visitor(dst);
 		for (auto const &seg : text_segments)
 			seg->visit(visitor);
-		
-		return visitor.dst;
 	}
 }
 

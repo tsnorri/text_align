@@ -112,9 +112,12 @@ cdef class SmithWatermanAligner(SmithWatermanAlignerBase):
 	
 	def make_alignment_graph(self):
 		"""Return the alignment as a graph."""
+		retval = []
 		cdef unique_ptr[cxx.alignment_graph_builder[char32_t]] builder
+		builder.reset(new cxx.alignment_graph_builder[char32_t]())
 		run_builder(deref(builder), deref(self.ctx), self.lhs, self.rhs)
-		return process_alignment_graph(deref(builder))
+		process_alignment_graph(deref(builder), retval)
+		return retval
 	
 	def setup_bit_vectors(self):
 		"""Use bit vectors for gaps."""
@@ -205,9 +208,12 @@ cdef class SmithWatermanScoringFpAligner(SmithWatermanAlignerBase):
 	
 	def make_alignment_graph(self):
 		"""Return the alignment as a graph."""
+		retval = []
 		cdef unique_ptr[cxx.alignment_graph_builder[long]] builder
+		builder.reset(new cxx.alignment_graph_builder[long]())
 		run_builder(deref(builder), deref(self.ctx), self.lhs, self.rhs)
-		return process_alignment_graph(deref(builder))
+		process_alignment_graph(deref(builder), retval)
+		return retval
 	
 	def setup_bit_vectors(self):
 		"""Use bit vectors for gaps."""
