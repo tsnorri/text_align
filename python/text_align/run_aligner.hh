@@ -12,6 +12,7 @@
 #include <Python.h>
 #include <text_align/alignment_graph_builder.hh>
 #include <text_align/smith_waterman/aligner.hh>
+#include "py_object_ptr.hh"
 
 // Cython tries to not include this file when the file passed to the C++ compiler is
 // the compiled .pyx file, but we need it.
@@ -235,13 +236,10 @@ namespace text_align
 				typedef alignment_graph::common_node <t_character> node_type;
 				typedef detail::process_node_characters <typename node_type::vector_type> pn_type;
 				auto const &node(static_cast <node_type &>(nb));
-				auto *characters(pn_type::process(node.characters()));
+				py_object_ptr characters(pn_type::process(node.characters()));
 				
 				// From aligner.h
-				::handle_common_node(dst, characters);
-				
-				// FIXME: wrap into a smart pointer?
-				Py_DECREF(characters);
+				::handle_common_node(dst, *characters);
 			}
 			
 			virtual void visit_distinct_node(alignment_graph::node_base &nb) override
@@ -249,15 +247,11 @@ namespace text_align
 				typedef alignment_graph::distinct_node <t_character> node_type;
 				typedef detail::process_node_characters <typename node_type::vector_type> pn_type;
 				auto const &node(static_cast <node_type &>(nb));
-				auto *characters_lhs(pn_type::process(node.characters_lhs()));
-				auto *characters_rhs(pn_type::process(node.characters_rhs()));
+				py_object_ptr characters_lhs(pn_type::process(node.characters_lhs()));
+				py_object_ptr characters_rhs(pn_type::process(node.characters_rhs()));
 				
 				// From aligner.h
-				::handle_distinct_node(dst, characters_lhs, characters_rhs);
-				
-				// FIXME: wrap into a smart pointer?
-				Py_DECREF(characters_lhs);
-				Py_DECREF(characters_rhs);
+				::handle_distinct_node(dst, *characters_lhs, *characters_rhs);
 			}
 		};
 		
