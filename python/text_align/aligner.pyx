@@ -141,6 +141,7 @@ cdef class SmithWatermanAligner(SmithWatermanAlignerBase):
 		deref(self.ctx).instantiate_lhs_gaps[cxx.rle_bit_vector[uint32_t]]()
 		deref(self.ctx).instantiate_rhs_gaps[cxx.rle_bit_vector[uint32_t]]()
 	
+	# FIXME: come up with a way to move these to an included file.
 	@property
 	def identity_score(self):
 		return deref(self.ctx).get_aligner().identity_score()
@@ -157,7 +158,6 @@ cdef class SmithWatermanAligner(SmithWatermanAlignerBase):
 	def mismatch_penalty(self, score):
 		deref(self.ctx).get_aligner().set_mismatch_penalty(score)
 	
-	# FIXME: come up with a way to move these to an included file.
 	@property
 	def gap_start_penalty(self):
 		return deref(self.ctx).get_aligner().gap_start_penalty()
@@ -184,7 +184,7 @@ cdef class SmithWatermanAligner(SmithWatermanAlignerBase):
 	
 	@property
 	def prints_debugging_information(self):
-		deref(self.ctx).get_aligner().prints_debugging_information()
+		return deref(self.ctx).get_aligner().prints_debugging_information()
 	
 	@prints_debugging_information.setter
 	def prints_debugging_information(self, should_print):
@@ -192,7 +192,7 @@ cdef class SmithWatermanAligner(SmithWatermanAlignerBase):
 	
 	@property
 	def alignment_score(self):
-		deref(self.ctx).get_aligner().alignment_score()
+		return deref(self.ctx).get_aligner().alignment_score()
 
 
 cdef class SmithWatermanScoringFpAligner(SmithWatermanAlignerBase):
@@ -205,11 +205,13 @@ cdef class SmithWatermanScoringFpAligner(SmithWatermanAlignerBase):
 	cdef alignment_context_base *get_context(self):
 		return self.ctx.get()
 	
-	def set_similarity(self, object similarity_map):
+	def similarity(self, object similarity_map):
 		cdef map[pair[uint32_t, uint32_t], float] *dst = &deref(self.ctx).get_scores()
 		deref(dst).clear()
 		for key, value in similarity_map.items():
 			deref(dst).insert((key, value))
+	
+	similarity = property(None, similarity)
 	
 	def align(self):
 		"""Align self.lhs and self.rhs."""
@@ -237,6 +239,14 @@ cdef class SmithWatermanScoringFpAligner(SmithWatermanAlignerBase):
 		deref(self.ctx).instantiate_lhs_gaps[cxx.rle_bit_vector[uint32_t]]()
 		deref(self.ctx).instantiate_rhs_gaps[cxx.rle_bit_vector[uint32_t]]()
 	
+	@property
+	def max_similarity(self):
+		return deref(self.ctx).get_aligner().identity_score()
+	
+	@max_similarity.setter
+	def max_similarity(self, score):
+		deref(self.ctx).get_aligner().set_identity_score(score)
+	
 	# FIXME: come up with a way to move these to an included file.
 	@property
 	def gap_start_penalty(self):
@@ -264,7 +274,7 @@ cdef class SmithWatermanScoringFpAligner(SmithWatermanAlignerBase):
 	
 	@property
 	def prints_debugging_information(self):
-		deref(self.ctx).get_aligner().prints_debugging_information()
+		return deref(self.ctx).get_aligner().prints_debugging_information()
 	
 	@prints_debugging_information.setter
 	def prints_debugging_information(self, should_print):
@@ -272,4 +282,4 @@ cdef class SmithWatermanScoringFpAligner(SmithWatermanAlignerBase):
 	
 	@property
 	def alignment_score(self):
-		deref(self.ctx).get_aligner().alignment_score()
+		return deref(self.ctx).get_aligner().alignment_score()
