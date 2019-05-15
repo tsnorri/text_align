@@ -34,24 +34,24 @@ cdef class Aligner(object):
 	cdef object lhs
 	cdef object rhs
 	cdef bool has_bit_vectors
-
+	
 	def __cinit__(self):
 		self.lhs = None
 		self.rhs = None
 		self.has_bit_vectors = False
-
+	
 	@property
 	def lhs(self):
 		return self.lhs
-
+	
 	@lhs.setter
 	def lhs(self, string):
 		self.lhs = string
-
+	
 	@property
 	def rhs(self):
 		return self.rhs
-
+	
 	@rhs.setter
 	def rhs(self, string):
 		self.rhs = string
@@ -73,7 +73,7 @@ cdef class Aligner(object):
 
 
 cdef class SmithWatermanAlignerBase(Aligner):
-
+	
 	cdef alignment_context_base *get_context(self):
 		raise NotImplementedError("Not implemented in base class")
 	
@@ -111,10 +111,10 @@ cdef class SmithWatermanAligner(SmithWatermanAlignerBase):
 		# hence the use of operator new.
 		# Apparently super’s implementation is called automatically.
 		self.ctx.reset(new alignment_context())
-
+	
 	cdef alignment_context_base *get_context(self):
 		return self.ctx.get()
-		
+	
 	def align(self):
 		"""Align self.lhs and self.rhs."""
 		self.check_bit_vectors()
@@ -227,11 +227,13 @@ cdef class SmithWatermanScoringFpAligner(SmithWatermanAlignerBase):
 	
 	def setup_bit_vectors(self):
 		"""Use bit vectors for gaps."""
+		self.has_bit_vectors = True
 		deref(self.ctx).instantiate_lhs_gaps[cxx.bit_vector]()
 		deref(self.ctx).instantiate_rhs_gaps[cxx.bit_vector]()
 	
 	def setup_run_vectors(self):
 		"""Use run vectors for gaps."""
+		self.has_bit_vectors = True
 		deref(self.ctx).instantiate_lhs_gaps[cxx.rle_bit_vector[uint32_t]]()
 		deref(self.ctx).instantiate_rhs_gaps[cxx.rle_bit_vector[uint32_t]]()
 	
