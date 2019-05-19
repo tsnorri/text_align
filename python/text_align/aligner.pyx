@@ -4,6 +4,7 @@
 # cython: language_level=3
 
 from cython.operator cimport dereference as deref, preincrement as inc
+from libc.float cimport FLT_MAX
 from libc.stdint cimport uint8_t, int32_t, uint32_t, uint64_t
 from libcpp cimport bool
 from libcpp.cast cimport dynamic_cast
@@ -206,10 +207,13 @@ cdef class SmithWatermanScoringFpAligner(SmithWatermanAlignerBase):
 		return self.ctx.get()
 	
 	def similarity(self, object similarity_map):
+		cdef float max_score = -FLT_MAX
 		cdef map[pair[uint32_t, uint32_t], float] *dst = &deref(self.ctx).get_scores()
 		deref(dst).clear()
 		for key, value in similarity_map.items():
 			deref(dst).insert((key, value))
+			max_score = max(max_score, value)
+		self.max_similarity = max_score
 	
 	similarity = property(None, similarity)
 	
