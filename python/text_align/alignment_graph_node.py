@@ -17,6 +17,9 @@ class NodeBase(object):
 	
 	def toJSON(self):
 		return {}
+	
+	def visit(self, visitor, user_info = None):
+		raise RuntimeError("Not implemented in base class")
 
 
 class CommonNode(NodeBase):
@@ -36,6 +39,9 @@ class CommonNode(NodeBase):
 	
 	def toJSON(self):
 		return {"type": "common", "text": "".join(self.text)}
+	
+	def visit(self, visitor, user_info = None):
+		return visitor.visit_common_alignment_node(self, user_info)
 
 
 class DistinctNode(NodeBase):
@@ -61,3 +67,7 @@ class DistinctNode(NodeBase):
 	
 	def toJSON(self):
 		return {"type": "distinct", "lhs": "".join(self.lhs), "rhs": "".join(self.rhs)}
+	
+	def visit(self, visitor, user_info = None):
+		return visitor.visit_distinct_alignment_node(self, user_info)
+
