@@ -208,12 +208,19 @@ cdef class SmithWatermanScoringFpAligner(SmithWatermanAlignerBase):
 	
 	def similarity(self, object similarity_map):
 		cdef float max_score = -FLT_MAX
-		cdef map[pair[uint32_t, uint32_t], float] *dst = &deref(self.ctx).get_scores()
+		cdef float min_score = FLT_MAX
+		# For some reason, Cython wants to wrap the result of &deref(self.ctx).get_scores() into
+		# a __Pyx_FakeReference, which did not seem to work. Hence the use of get_scores_ptr().
+		cdef map[pair[long, long], float] *dst = deref(self.ctx).get_scores_ptr()
 		deref(dst).clear()
 		for key, value in similarity_map.items():
+			assert key is not None
+			assert value is not None
 			deref(dst).insert((key, value))
 			max_score = max(max_score, value)
+			min_score = min(min_score, value)
 		self.max_similarity = max_score
+		self.min_similarity = min_score
 	
 	similarity = property(None, similarity)
 	

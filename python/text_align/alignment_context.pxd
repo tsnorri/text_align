@@ -27,7 +27,8 @@ cdef extern from "alignment_context.hh" namespace "text_align::python":
 		void instantiate_lhs_gaps[t_lhs]() except +
 		void instantiate_rhs_gaps[t_rhs]() except +
 		
-		map[pair[uint32_t, uint32_t], float] &get_scores() except +
+		map[pair[long, long], float] &get_scores() except +
+		map[pair[long, long], float] *get_scores_ptr() except +
 		
 	cdef cppclass alignment_context(alignment_context_base):
 		alignment_context() except +
