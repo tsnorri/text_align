@@ -10,6 +10,10 @@ class NodeType(Enum):
 	DISTINCT = 2
 
 
+def stringify_list(l):
+	return "".join([str(x) for x in l])
+
+
 class NodeBase(object):
 	@property
 	def type(self):
@@ -35,10 +39,10 @@ class CommonNode(NodeBase):
 		return len(self.text)
 	
 	def __str__(self):
-		return "{text: '%s'}" % "".join(self.text)
+		return "{text: '%s'}" % stringify_list(self.text)
 	
 	def toJSON(self):
-		return {"type": "common", "text": "".join(self.text)}
+		return {"type": "common", "text": stringify_list(self.text)}
 	
 	def visit(self, visitor, user_info = None):
 		return visitor.visit_common_alignment_node(self, user_info)
@@ -63,10 +67,10 @@ class DistinctNode(NodeBase):
 			return lhs_len
 	
 	def __str__(self):
-		return "{lhs: '%s', rhs: '%s'}" % ("".join(self.lhs), "".join(self.rhs))
+		return "{lhs: '%s', rhs: '%s'}" % (stringify_list(self.lhs), stringify_list(self.rhs))
 	
 	def toJSON(self):
-		return {"type": "distinct", "lhs": "".join(self.lhs), "rhs": "".join(self.rhs)}
+		return {"type": "distinct", "lhs": stringify_list(self.lhs), "rhs": stringify_list(self.rhs)}
 	
 	def visit(self, visitor, user_info = None):
 		return visitor.visit_distinct_alignment_node(self, user_info)
