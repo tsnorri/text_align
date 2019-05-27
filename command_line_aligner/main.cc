@@ -84,6 +84,8 @@ public:
 	void push_rhs(bool flag, std::size_t count) { m_rhs_gaps.push_back(flag, count); }
 	void clear_gaps() { m_lhs_gaps.clear(); m_rhs_gaps.clear(); }
 	void reverse_gaps() { m_lhs_gaps.reverse(); m_rhs_gaps.reverse(); }
+
+	static constexpr bool uses_scoring_function() { return false; }
 };
 
 

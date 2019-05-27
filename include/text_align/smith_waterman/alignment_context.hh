@@ -78,6 +78,8 @@ namespace text_align { namespace smith_waterman {
 	public:
 		using superclass::superclass;
 		
+		static constexpr bool uses_scoring_function() { return false; }
+		
 		bit_vector_type &lhs_gaps() { return m_lhs_gaps; }
 		bit_vector_type &rhs_gaps() { return m_rhs_gaps; }
 		bit_vector_type const &lhs_gaps() const { return m_lhs_gaps; }

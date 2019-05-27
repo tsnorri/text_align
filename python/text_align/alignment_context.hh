@@ -10,7 +10,10 @@
 
 
 namespace text_align { namespace python { namespace detail {
-	struct no_op {};
+	struct no_op
+	{
+		static constexpr bool uses_scoring_function() { return false; }
+	};
 }}}
 
 
@@ -115,6 +118,8 @@ namespace text_align { namespace python {
 		map_type	m_scores;
 		
 	public:
+		static constexpr bool uses_scoring_function() { return true; }
+		
 		t_value score_pair(t_index const lhs, t_index const rhs) const
 		{
 			key_type const key(std::min(lhs, rhs), std::max(lhs, rhs));

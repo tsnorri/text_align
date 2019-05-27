@@ -41,7 +41,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		{
 			template <typename t_class>
 			using score_pair_t = std::integral_constant <
-				score_type (t_class::*)(t_lhs_c const, t_rhs_c const),
+				score_type (t_class::*)(t_lhs_c const, t_rhs_c const) const,
 				&t_class::score_pair
 			>;
 		};
@@ -148,7 +148,9 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		t_rhs_c const rhs_c
 	) const -> score_type
 	{
-		if constexpr (std::is_detected_v <score_pair_tpl <t_lhs_c, t_rhs_c>::template score_pair_t, typename t_owner::delegate_type>)
+		// FIXME: for some reason the following does not detect the scoring function in scoring_fp_alignment_context. Hence we call uses_scoring_function(). 
+		//if constexpr (std::is_detected_v <score_pair_tpl <t_lhs_c, t_rhs_c>::template score_pair_t, typename t_owner::delegate_type>)
+		if constexpr (t_owner::delegate_type::uses_scoring_function())
 		{
 			auto const &delegate(this->m_owner->delegate());
 			return delegate.score_pair(lhs_c, rhs_c);
