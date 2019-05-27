@@ -14,19 +14,10 @@ namespace text_align {
 	{
 		if (!m_current_segment || m_current_segment->type() != nt)
 		{
-			if (m_current_segment)
-				m_text_segments.emplace_back(std::move(m_current_segment));
-			
+			end_current_segment();
 			return true;
 		}
 		
 		return false;
-	}
-	
-	
-	void alignment_graph_builder_base::finalize_graph()
-	{
-		if (m_current_segment)
-			m_text_segments.emplace_back(std::move(m_current_segment));
 	}
 }

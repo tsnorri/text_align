@@ -120,8 +120,9 @@ namespace text_align {
 		node_ptr		m_current_segment;
 			
 	protected:
+		void end_current_segment() { if (m_current_segment) m_text_segments.emplace_back(std::move(m_current_segment)); }
 		bool check_current_segment(enum alignment_graph::node_type const nt);
-		void finalize_graph();
+		void finalize_graph() { end_current_segment(); }
 		
 	public:
 		node_ptr_vector const &text_segments() const { return m_text_segments; }
@@ -222,38 +223,50 @@ namespace text_align {
 		// At a given aligned index, if both lhs and rhs have the same character,
 		// append it to a graph node that represents a common segment.
 		// Otherwise, append the characters to a graph node that represents
-		// distinct segments.
+		// distinct segments. At the end of a run of gaps reset the current segment
+		// in order to handle positive similarity for distinct values.
 		libbio_assert(lhs_gaps.size() == rhs_gaps.size());
-		for (auto const &tup : ranges::view::zip(lhs_gaps, rhs_gaps))
 		{
-			bool const lhs_has_gap(std::get <0>(tup));
-			bool const rhs_has_gap(std::get <1>(tup));
+			bool prev_lhs_has_gap(false);
+			bool prev_rhs_has_gap(false);
+			for (auto const &tup : ranges::view::zip(lhs_gaps, rhs_gaps))
+			{
+				bool const lhs_has_gap(std::get <0>(tup));
+				bool const rhs_has_gap(std::get <1>(tup));
 			
-			libbio_always_assert(! (lhs_has_gap && rhs_has_gap));
-			if (! (lhs_has_gap || rhs_has_gap))
-			{
-				libbio_always_assert(lhs_it != lhs_end);
-				libbio_always_assert(rhs_it != rhs_end);
+				libbio_always_assert(! (lhs_has_gap && rhs_has_gap));
 				
-				auto const lhsc(*lhs_it++);
-				auto const rhsc(*rhs_it++);
+				if ((prev_lhs_has_gap && !lhs_has_gap) || (prev_rhs_has_gap && !rhs_has_gap))
+					end_current_segment();
 				
-				if (libbio::is_equal(lhsc, rhsc))
-					append_to_common_segment(lhsc);
-				else
-					append_to_distinct_segment(lhsc, rhsc);
-			}
-			else if (lhs_has_gap)
-			{
-				libbio_always_assert(rhs_it != rhs_end);
-				auto const rhsc(*rhs_it++);
-				append_to_distinct_segment(traits_type::gap_character(), rhsc);
-			}
-			else if (rhs_has_gap)
-			{
-				libbio_always_assert(lhs_it != lhs_end);
-				auto const lhsc(*lhs_it++);
-				append_to_distinct_segment(lhsc, traits_type::gap_character());
+				if (! (lhs_has_gap || rhs_has_gap))
+				{
+					libbio_always_assert(lhs_it != lhs_end);
+					libbio_always_assert(rhs_it != rhs_end);
+				
+					auto const lhsc(*lhs_it++);
+					auto const rhsc(*rhs_it++);
+				
+					if (libbio::is_equal(lhsc, rhsc))
+						append_to_common_segment(lhsc);
+					else
+						append_to_distinct_segment(lhsc, rhsc);
+				}
+				else if (lhs_has_gap)
+				{
+					libbio_always_assert(rhs_it != rhs_end);
+					auto const rhsc(*rhs_it++);
+					append_to_distinct_segment(traits_type::gap_character(), rhsc);
+				}
+				else if (rhs_has_gap)
+				{
+					libbio_always_assert(lhs_it != lhs_end);
+					auto const lhsc(*lhs_it++);
+					append_to_distinct_segment(lhsc, traits_type::gap_character());
+				}
+				
+				prev_lhs_has_gap = lhs_has_gap;
+				prev_rhs_has_gap = rhs_has_gap;
 			}
 		}
 		
