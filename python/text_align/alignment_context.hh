@@ -21,12 +21,13 @@ namespace text_align { namespace python {
 	
 	struct unit_alignment_scorer_base
 	{
-		typedef std::uint32_t						index_type;
+		typedef long								index_type;
 		typedef std::pair <index_type, index_type>	key_type;
 		typedef float								value_type;
 		typedef std::map <key_type, value_type>		map_type;
 		
 		virtual map_type &get_scores() { throw std::runtime_error("Not implemented"); }
+		map_type *get_scores_ptr() { return &get_scores(); }
 	};
 	
 	
@@ -130,9 +131,13 @@ namespace text_align { namespace python {
 		}
 	};
 	
+	typedef alignment_scorer_tpl <
+		unit_alignment_scorer_base::index_type,
+		unit_alignment_scorer_base::value_type
+	> unit_alignment_scorer;
 	
 	class alignment_scorer :
-		public alignment_scorer_tpl <unit_alignment_scorer_base::index_type, unit_alignment_scorer_base::value_type>,
+		public unit_alignment_scorer,
 		public virtual unit_alignment_scorer_base
 	{
 	public:
@@ -142,7 +147,7 @@ namespace text_align { namespace python {
 		typedef typename scorer_tpl_type::map_type				map_type;
 		
 	public:
-		virtual map_type &get_scores() { return this->m_scores; }
+		virtual map_type &get_scores() final { return this->m_scores; }
 	};
 	
 	
