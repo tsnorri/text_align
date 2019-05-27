@@ -57,20 +57,73 @@ cdef class Aligner(object):
 	def rhs(self, string):
 		self.rhs = string
 	
-	@property
-	def scaled_alignment_score(self):
-		"""Scale the alignment score to [0, 1]."""
-		# Interpret the identity score as the maximum of the scoring matrix, if one has been given.
-		max_ch_score = self.identity_score
+	def scaled_alignment_score(self, min_scaled_score, max_scaled_score):
+		"""Scale the alignment score to [min_scaled_score, max_scaled_score]."""
 		
-		# Suppose the given strings have distinct lengths. In this case, the length difference must
-		# consist of non-matching characters. If mismatch and gap penalties are non-positive,
-		# the non-matching part cannot increase the score. Therefore the maximum is max_ch_score
-		# multiplied by the length of the shorter string.
-		min_len = min(len(self.lhs), len(self.rhs))
-		max_score = float(max_ch_score * min_len)
+		assert min_scaled_score <= max_scaled_score
 		
-		return self.alignment_score / max_score
+		max_similarity = self.max_similarity
+		min_similarity = self.min_similarity
+		
+		# Determine the string lengths.
+		lhs_len, rhs_len = len(self.lhs), len(self.rhs)
+		min_len = min(lhs_len, rhs_len)
+		max_len = max(lhs_len, rhs_len)
+		
+		# Determine the minimum penalty from the length difference.
+		len_diff_penalty = 0
+		len_diff = max_len - min_len
+		if 0 < len_diff:
+			len_diff_penalty = self.gap_start_penalty + len_diff * self.gap_penalty
+		
+		# Determine the maximum score. This is the case when all characters match with max_similarity.
+		max_score = float(max_similarity * min_len + len_diff_penalty)
+		
+		# Determine the minimum score.
+		min_score = float(max(
+			min_similarity * min_len + len_diff_penalty,
+			2 * self.gap_start_penalty + (lhs_len + rhs_len) * self.gap_penalty
+		))
+		
+		# Scale the alignment score.
+		alignment_score = self.alignment_score
+		assert min_score <= alignment_score, "alignment_score: {} min_score: {} max_score: {}".format(alignment_score, min_score, max_score)
+		assert alignment_score <= max_score, "alignment_score: {} min_score: {} max_score: {}".format(alignment_score, min_score, max_score)
+		unit_scaled_score = (alignment_score - min_score) / (max_score - min_score)
+		assert 0 <= unit_scaled_score,		"unit_scaled_score: {} alignment_score: {} min_score: {} max_score: {}".format(unit_scaled_score, alignment_score, min_score, max_score)
+		assert unit_scaled_score <= 1.0,	"unit_scaled_score: {} alignment_score: {} min_score: {} max_score: {}".format(unit_scaled_score, alignment_score, min_score, max_score)
+		
+		retval = (max_scaled_score - min_scaled_score) * unit_scaled_score + min_scaled_score
+		assert min_scaled_score <= retval, "min_scaled_score: {} retval: {}".format(min_scaled_score, retval)
+		assert retval <= max_scaled_score, "max_scaled_score: {} retval: {}".format(max_scaled_score, retval)
+		return retval
+	
+	
+	def scaled_alignment_score(self, min_similarity, max_similarity):
+		"""Scale the alignment score to [min_similarity, max_similarity]."""
+		lhs_len, rhs_len = len(self.lhs), len(self.rhs)
+		min_len = min(lhs_len, rhs_len)
+		max_len = max(lhs_len, rhs_len)
+		
+		# Determine the minimum penalty from the length difference.
+		len_diff_penalty = 0
+		len_diff = max_len - min_len
+		if 0 < len_diff:
+			len_diff_penalty = self.gap_start_penalty + len_diff * self.gap_penalty
+		
+		# Determine the maximum score. This is the case when all characters match with max_ch_score.
+		max_score = float(max_similarity * min_len + len_diff_penalty)
+		
+		# Determine the minimum score.
+		min_score = float(max(
+			min_similarity * min_len + len_diff_penalty,
+			2 * self.gap_start_penalty + (lhs_len + rhs_len) * self.gap_penalty
+		))
+		
+		# Scale between max_similarity and min_similarity.
+		retval = (self.alignment_score - min_similarity) / (max_similarity - min_similarity) + min_similarity
+		assert min_similarity <= retval and retval <= max_similarity
+		return retval
 
 
 cdef class SmithWatermanAlignerBase(Aligner):
@@ -141,6 +194,15 @@ cdef class SmithWatermanAligner(SmithWatermanAlignerBase):
 		self.has_bit_vectors = True
 		deref(self.ctx).instantiate_lhs_gaps[cxx.rle_bit_vector[uint32_t]]()
 		deref(self.ctx).instantiate_rhs_gaps[cxx.rle_bit_vector[uint32_t]]()
+	
+	# For scaling.
+	@property
+	def max_similarity(self):
+		return self.identity_score
+	
+	@property
+	def min_similarity(self):
+		return self.mismatch_penalty
 	
 	# FIXME: come up with a way to move these to an included file.
 	@property
@@ -257,6 +319,14 @@ cdef class SmithWatermanScoringFpAligner(SmithWatermanAlignerBase):
 	@max_similarity.setter
 	def max_similarity(self, score):
 		deref(self.ctx).get_aligner().set_identity_score(score)
+	
+	@property
+	def min_similarity(self):
+		return deref(self.ctx).get_aligner().mismatch_penalty()
+	
+	@min_similarity.setter
+	def min_similarity(self, score):
+		deref(self.ctx).get_aligner().set_mismatch_penalty(score)
 	
 	# FIXME: come up with a way to move these to an included file.
 	@property
