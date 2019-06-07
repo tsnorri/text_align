@@ -3,8 +3,8 @@
  * This code is licensed under MIT license (see LICENSE for details).
  */
 
-#ifndef TEXT_ALIGN_CODE_POINT_ITERATOR_HH
-#define TEXT_ALIGN_CODE_POINT_ITERATOR_HH
+#ifndef TEXT_ALIGN_CODE_POINT_RANGE_HH
+#define TEXT_ALIGN_CODE_POINT_RANGE_HH
 
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/locale/utf.hpp>

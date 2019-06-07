@@ -10,7 +10,7 @@
 #include <iostream>
 #include <libbio/int_vector.hh>
 #include <text_align/alignment_graph_builder.hh>
-#include <text_align/code_point_iterator.hh>
+#include <text_align/code_point_range.hh>
 #include <text_align/smith_waterman/aligner.hh>
 #include <text_align/smith_waterman/alignment_context.hh>
 

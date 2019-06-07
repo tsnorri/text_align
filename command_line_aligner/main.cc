@@ -14,7 +14,7 @@
 #include <libbio/mmap_handle.hh>
 #include <range/v3/all.hpp>
 #include <string>
-#include <text_align/code_point_iterator.hh>
+#include <text_align/code_point_range.hh>
 #include <text_align/smith_waterman/aligner.hh>
 #include <vector>
 
