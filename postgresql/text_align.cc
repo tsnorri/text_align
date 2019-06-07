@@ -44,7 +44,7 @@ namespace {
 	template <typename t_range>
 	std::size_t copy_distance(t_range range)
 	{
-		return boost::distance(range);
+		return ranges::distance(range);
 	}
 	
 	
@@ -55,6 +55,7 @@ namespace {
 		aligner.set_mismatch_penalty(mismatch);
 		aligner.set_gap_start_penalty(gap_start);
 		aligner.set_gap_penalty(gap);
+		aligner.set_reverses_texts(true);
 	}
 	
 	
@@ -103,8 +104,8 @@ extern "C" {
 			std::string_view lhsv, rhsv;
 			make_string_view(lhs, lhsv);
 			make_string_view(rhs, rhsv);
-			auto const lhsr(ta::make_code_point_iterator_range(lhsv.cbegin(), lhsv.cend()));
-			auto const rhsr(ta::make_code_point_iterator_range(rhsv.cbegin(), rhsv.cend()));
+			auto const lhsr(ta::make_reversed_code_point_range(lhsv));
+			auto const rhsr(ta::make_reversed_code_point_range(rhsv));
 			auto const lhs_len(copy_distance(lhsr));
 			auto const rhs_len(copy_distance(rhsr));
 			
