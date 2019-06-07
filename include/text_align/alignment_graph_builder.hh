@@ -244,8 +244,10 @@ namespace text_align {
 					libbio_always_assert(lhs_it != lhs_end);
 					libbio_always_assert(rhs_it != rhs_end);
 				
-					auto const lhsc(*lhs_it++);
-					auto const rhsc(*rhs_it++);
+					auto const lhsc(*lhs_it);
+					auto const rhsc(*rhs_it);
+					++lhs_it;
+					++rhs_it;
 				
 					if (libbio::is_equal(lhsc, rhsc))
 						append_to_common_segment(lhsc);
@@ -255,13 +257,15 @@ namespace text_align {
 				else if (lhs_has_gap)
 				{
 					libbio_always_assert(rhs_it != rhs_end);
-					auto const rhsc(*rhs_it++);
+					auto const rhsc(*rhs_it);
+					++rhs_it;
 					append_to_distinct_segment(traits_type::gap_character(), rhsc);
 				}
 				else if (rhs_has_gap)
 				{
 					libbio_always_assert(lhs_it != lhs_end);
-					auto const lhsc(*lhs_it++);
+					auto const lhsc(*lhs_it);
+					++lhs_it;
 					append_to_distinct_segment(lhsc, traits_type::gap_character());
 				}
 				
