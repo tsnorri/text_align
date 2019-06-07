@@ -137,7 +137,11 @@ namespace text_align { namespace detail {
 		if (ctx.stopped())
 			ctx.restart();
 		
-		ctx.get_aligner().align(lhs, rhs);
+		// Reverse the texts in order to align gaps to the right.
+		auto &aligner(ctx.get_aligner());
+		aligner.set_reverses_texts(true);
+		aligner.align(ranges::view::reverse(lhs), ranges::view::reverse(rhs));
+		
 		ctx.run();
 	}
 	

@@ -261,9 +261,12 @@ cdef class SmithWatermanAligner(SmithWatermanAlignerBase):
 cdef class SmithWatermanScoringFpAligner(SmithWatermanAlignerBase):
 	
 	cdef unique_ptr[scoring_fp_alignment_context] ctx
+	cdef bool determines_similarity_boundaries_from_similarity_map
 
 	def __cinit__(self):
 		self.ctx.reset(new scoring_fp_alignment_context())
+		deref(self.ctx).get_aligner().set_prints_values_converted_to_utf8(False)
+		self.determines_similarity_boundaries_from_similarity_map = False
 
 	cdef alignment_context_base *get_context(self):
 		return self.ctx.get()
@@ -281,8 +284,10 @@ cdef class SmithWatermanScoringFpAligner(SmithWatermanAlignerBase):
 			deref(dst).insert((key, value))
 			max_score = max(max_score, value)
 			min_score = min(min_score, value)
-		self.max_similarity = max_score
-		self.min_similarity = min_score
+		
+		if self.determines_similarity_boundaries_from_similarity_map:
+			self.max_similarity = max_score
+			self.min_similarity = min_score
 	
 	similarity = property(None, similarity)
 	

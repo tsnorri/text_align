@@ -28,6 +28,7 @@ cdef extern from "<text_align/smith_waterman/aligner.hh>" namespace "text_align:
 		void set_gap_penalty(t_score const)
 		void set_segment_length(uint32_t const)
 		void set_prints_debugging_information(bool const)
+		void set_prints_values_converted_to_utf8(bool const)
 		
 		void align[t_string](const t_string &, const t_string &)
 		
