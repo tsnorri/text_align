@@ -18,6 +18,9 @@ namespace text_align { namespace smith_waterman { namespace detail {
 	template <typename t_lhs_it, typename t_rhs_it>
 	class matrix_printer
 	{
+		static_assert(!std::is_same_v <void, t_lhs_it>);
+		static_assert(!std::is_same_v <void, t_rhs_it>);
+		
 	public:
 		typedef aligner_base::arrow_type	arrow_type;
 		
@@ -32,6 +35,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		std::size_t									m_columns{};
 		std::size_t									m_j_start{};
 		std::size_t									m_i_start{};
+		bool										m_print_utf8{};
 		
 	public:
 		matrix_printer() = default;
@@ -42,7 +46,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			std::size_t rows,
 			std::size_t columns,
 			t_lhs_it const &lhs_it,
-			t_rhs_it const &rhs_it
+			t_rhs_it const &rhs_it,
+			bool print_utf8
 		):
 			m_path(rows, columns),
 			m_lhs_it(lhs_it),
@@ -50,7 +55,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			m_rows(rows),
 			m_columns(columns),
 			m_j_start(j_start),
-			m_i_start(i_start)
+			m_i_start(i_start),
+			m_print_utf8(print_utf8)
 		{
 		}
 		
@@ -83,12 +89,20 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		std::fill_n(out_it, 1 + m_padding, '\t');
 		for (std::size_t i(m_padding); i < m_columns; ++i)
 		{
-			auto const rhs_c(*rhs_it++);
+			auto const rhs_c(*rhs_it);
+			++rhs_it;
 			std::cerr << '\t';
-			if (10 == rhs_c) // newline
-				std::cerr << "↩︎";
+			if (m_print_utf8)
+			{
+				if (10 == rhs_c) // newline
+					std::cerr << u8"↩︎";
+				else
+					boost::locale::utf::utf_traits <char, 1>::encode(rhs_c, out_it);
+			}
 			else
-				boost::locale::utf::utf_traits <char, 1>::encode(rhs_c, out_it);
+			{
+				std::cerr << rhs_c;
+			}
 		}
 		std::cerr << '\n';
 		
@@ -169,14 +183,22 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		for (std::size_t j(0); j < m_rows; ++j)
 		{
 			if (j < m_padding)
-				std::cerr << " \t" << j;
+				std::cerr << u8" \t" << j;
 			else
 			{
-				auto const lhs_c(*lhs_it++);
-				if (10 == lhs_c) // newline
-					std::cerr << "↩︎";
+				auto const lhs_c(*lhs_it);
+				++lhs_it;
+				if (m_print_utf8)
+				{
+					if (10 == lhs_c) // newline
+						std::cerr << u8"↩︎";
+					else
+						boost::locale::utf::utf_traits <char, 1>::encode(lhs_c, out_it);
+				}
 				else
-					boost::locale::utf::utf_traits <char, 1>::encode(lhs_c, out_it);
+				{
+					std::cerr << lhs_c;
+				}
 				std::cerr << '\t' << j;
 			}
 
@@ -236,14 +258,22 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		for (std::size_t j(0); j < m_rows; ++j)
 		{
 			if (j < m_padding)
-				std::cerr << " \t" << j;
+				std::cerr << u8" \t" << j;
 			else
 			{
-				auto const lhs_c(*lhs_it++);
-				if (10 == lhs_c) // newline
-					std::cerr << "↩︎";
+				auto const lhs_c(*lhs_it);
+				++lhs_it;
+				if (m_print_utf8)
+				{
+					if (10 == lhs_c) // newline
+						std::cerr << u8"↩︎";
+					else
+						boost::locale::utf::utf_traits <char, 1>::encode(lhs_c, out_it);
+				}
 				else
-					boost::locale::utf::utf_traits <char, 1>::encode(lhs_c, out_it);
+				{
+					std::cerr << lhs_c;
+				}
 				std::cerr << '\t' << j;
 			}
 
