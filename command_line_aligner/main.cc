@@ -12,6 +12,7 @@
 #include <libbio/int_vector.hh>
 #include <libbio/map_on_stack.hh>
 #include <libbio/mmap_handle.hh>
+#include <range/v3/all.hpp>
 #include <string>
 #include <text_align/code_point_iterator.hh>
 #include <text_align/smith_waterman/aligner.hh>
@@ -84,7 +85,7 @@ public:
 	void push_rhs(bool flag, std::size_t count) { m_rhs_gaps.push_back(flag, count); }
 	void clear_gaps() { m_lhs_gaps.clear(); m_rhs_gaps.clear(); }
 	void reverse_gaps() { m_lhs_gaps.reverse(); m_rhs_gaps.reverse(); }
-
+	
 	static constexpr bool uses_scoring_function() { return false; }
 };
 
@@ -156,7 +157,7 @@ protected:
 		if (actual != expected)
 			std::cerr << name << " mismatch at (" << j << ", " << i << "): expected " << +expected << ", actual " << +actual << ".\n";
 	}
-
+	
 public:
 	void did_calculate_score(ta::smith_waterman::aligner_base &aligner, std::size_t j, std::size_t i, score_result const &result, bool initial)
 	{
@@ -171,9 +172,9 @@ public:
 
 
 template <typename t_range>
-std::size_t copy_distance(t_range range)
+std::size_t copy_distance(t_range const &range)
 {
-	return boost::distance(range);
+	return ranges::distance(range);
 }
 
 
@@ -184,7 +185,8 @@ void print_aligned(t_range const &range, libbio::bit_vector const &gaps)
 	
 	std::string buffer;
 	
-	auto it(range.begin()), end(range.end());
+	auto it(range.begin());
+	auto const end(range.end());
 	auto ostream_it(std::ostream_iterator <char>(std::cout, ""));
 	// std::ostream_iterator's operator++ is a no-op, hence we don't
 	// save the output value from utf_traits nor use it in else.
@@ -193,7 +195,8 @@ void print_aligned(t_range const &range, libbio::bit_vector const &gaps)
 		if (0 == val)
 		{
 			libbio_assert(it != end);
-			boost::locale::utf::utf_traits <char>::encode(*it++, ostream_it);
+			boost::locale::utf::utf_traits <char>::encode(*it, ostream_it);
+			++it; // Ranges’ iterator’s operator++ returns void.
 		}
 		else
 		{
@@ -238,6 +241,7 @@ void configure_aligner(t_aligner &aligner, gengetopt_args_info const &args_info)
 	aligner.set_gap_start_penalty(args_info.gap_start_penalty_arg);
 	aligner.set_gap_penalty(args_info.gap_penalty_arg);
 	aligner.set_prints_debugging_information(args_info.print_debugging_information_flag);
+	aligner.set_reverses_texts(true);
 }
 
 
@@ -246,25 +250,27 @@ void run_aligner(
 	t_aligner &aligner,
 	typename t_aligner::delegate_type &delegate,
 	boost::asio::io_context &pool,
-	std::string_view const &lhsv,
-	std::string_view const &rhsv,
+	std::string_view const &lhssv,
+	std::string_view const &rhssv,
 	gengetopt_args_info const &args_info
 )
 {
 	pool.restart();
 	if (args_info.align_bytes_flag)
 	{
-		auto const lhs_len(lhsv.size());
-		auto const rhs_len(lhsv.size());
+		auto const lhs_len(lhssv.size());
+		auto const rhs_len(rhssv.size());
+		auto const lhsr(ranges::view::reverse(lhssv));
+		auto const rhsr(ranges::view::reverse(rhssv));
 		delegate.will_run_aligner(aligner, lhs_len, rhs_len);
-		aligner.align(lhsv, rhsv, lhs_len, rhs_len);
+		aligner.align(lhsr, rhsr, lhs_len, rhs_len);
 		pool.run();
 		std::cout << "Score: " << aligner.alignment_score() << std::endl;
 	}
 	else
 	{
-		auto const lhsr(ta::make_code_point_iterator_range(lhsv.cbegin(), lhsv.cend()));
-		auto const rhsr(ta::make_code_point_iterator_range(rhsv.cbegin(), rhsv.cend()));
+		auto const lhsr(ta::make_reversed_code_point_range(ranges::view::reverse(lhssv)));
+		auto const rhsr(ta::make_reversed_code_point_range(ranges::view::reverse(rhssv)));
 		auto const lhs_len(copy_distance(lhsr));
 		auto const rhs_len(copy_distance(rhsr));
 		libbio_assert(lhsr.begin() != lhsr.end());
@@ -274,8 +280,24 @@ void run_aligner(
 		aligner.align(lhsr, rhsr, lhs_len, rhs_len);
 		pool.run();
 		std::cout << "Score: " << aligner.alignment_score() << std::endl;
-		print_aligned(lhsr, delegate.lhs_gaps());
-		print_aligned(rhsr, delegate.rhs_gaps());
+	}
+}
+
+
+template <typename t_delegate>
+void print_texts_if_needed(
+	t_delegate const &delegate,
+	std::string_view const &lhssv,
+	std::string_view const &rhssv,
+	gengetopt_args_info const &args_info
+)
+{
+	if (!args_info.align_bytes_flag)
+	{
+		auto const lhsv(ta::make_code_point_range(lhssv));
+		auto const rhsv(ta::make_code_point_range(rhssv));
+		print_aligned(lhsv, delegate.lhs_gaps());
+		print_aligned(rhsv, delegate.rhs_gaps());
 	}
 }
 
@@ -305,12 +327,15 @@ void process_input(boost::asio::io_context &pool, gengetopt_args_info const &arg
 					libbio_assert(ad.lhs_gaps().size() == ad.rhs_gaps().size());
 				}
 				
-				tested_aligner_type tested_aligner(pool, td);
-				configure_aligner(tested_aligner, args_info);
-				run_aligner(tested_aligner, td, pool, lhsv, rhsv, args_info);
+				{
+					tested_aligner_type tested_aligner(pool, td);
+					configure_aligner(tested_aligner, args_info);
+					run_aligner(tested_aligner, td, pool, lhsv, rhsv, args_info);
+				}
 				
 				{
 					// Check the gap vectors.
+					bool have_mismatch(false);
 					auto const &lhs_expected_gaps(ad.lhs_gaps());
 					auto const &rhs_expected_gaps(ad.rhs_gaps());
 					auto const &lhs_gaps(td.lhs_gaps());
@@ -320,7 +345,6 @@ void process_input(boost::asio::io_context &pool, gengetopt_args_info const &arg
 						std::cerr << "Traceback lengths do not match. Expected " << lhs_expected_gaps.size() << ", got " << lhs_gaps.size() << ".\n";
 					
 					{
-						std::cerr << '\n';
 						std::size_t i(lhs_gaps.size());
 						std::size_t j(lhs_expected_gaps.size());
 						while (i && j)
@@ -328,12 +352,14 @@ void process_input(boost::asio::io_context &pool, gengetopt_args_info const &arg
 							--i;
 							--j;
 							if (lhs_gaps[i] != lhs_expected_gaps[j])
+							{
+								have_mismatch = true;
 								std::cerr << "Mismatch in lhs gaps at positions " << j << " (expected), " << i << " (actual).\n";
+							}
 						}
 					}
 					
 					{
-						std::cerr << '\n';
 						std::size_t i(rhs_gaps.size());
 						std::size_t j(rhs_expected_gaps.size());
 						while (i && j)
@@ -341,10 +367,32 @@ void process_input(boost::asio::io_context &pool, gengetopt_args_info const &arg
 							--i;
 							--j;
 							if (rhs_gaps[i] != rhs_expected_gaps[j])
+							{
+								have_mismatch = true;
 								std::cerr << "Mismatch in rhs gaps at positions " << j << " (expected), " << i << " (actual).\n";
+							}
 						}
 					}
+					
+					if (have_mismatch)
+					{
+						std::cerr << "Lhs gaps:          ";
+						for (auto const gg : lhs_gaps)
+							std::cerr << gg;
+						std::cerr << "\nRhs gaps:          ";
+						for (auto const gg : rhs_gaps)
+							std::cerr << gg;
+						std::cerr << "\nLhs expected gaps: ";
+						for (auto const gg : lhs_expected_gaps)
+							std::cerr << gg;
+						std::cerr << "\nRhs expected gaps: ";
+						for (auto const gg : rhs_expected_gaps)
+							std::cerr << gg;
+						std::cerr << '\n';
+					}
 				}
+				
+				print_texts_if_needed(td, lhsv, rhsv, args_info);
 			}
 			else
 			{
@@ -352,6 +400,7 @@ void process_input(boost::asio::io_context &pool, gengetopt_args_info const &arg
 				aligner_type <std::uint64_t, aligner_delegate> aligner(pool, ad);
 				configure_aligner(aligner, args_info);
 				run_aligner(aligner, ad, pool, lhsv, rhsv, args_info);
+				print_texts_if_needed(ad, lhsv, rhsv, args_info);
 			}
 		},
 		lhs_input, rhs_input
