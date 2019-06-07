@@ -35,7 +35,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		std::size_t									m_columns{};
 		std::size_t									m_j_start{};
 		std::size_t									m_i_start{};
-		bool										m_print_utf8{};
+		bool										m_prints_values_converted_to_utf8{};
 		
 	public:
 		matrix_printer() = default;
@@ -47,7 +47,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			std::size_t columns,
 			t_lhs_it const &lhs_it,
 			t_rhs_it const &rhs_it,
-			bool print_utf8
+			bool prints_values_converted_to_utf8
 		):
 			m_path(rows, columns),
 			m_lhs_it(lhs_it),
@@ -56,7 +56,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			m_columns(columns),
 			m_j_start(j_start),
 			m_i_start(i_start),
-			m_print_utf8(print_utf8)
+			m_prints_values_converted_to_utf8(prints_values_converted_to_utf8)
 		{
 		}
 		
@@ -92,7 +92,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			auto const rhs_c(*rhs_it);
 			++rhs_it;
 			std::cerr << '\t';
-			if (m_print_utf8)
+			if (m_prints_values_converted_to_utf8)
 			{
 				if (10 == rhs_c) // newline
 					std::cerr << u8"↩︎";
@@ -188,7 +188,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			{
 				auto const lhs_c(*lhs_it);
 				++lhs_it;
-				if (m_print_utf8)
+				if (m_prints_values_converted_to_utf8)
 				{
 					if (10 == lhs_c) // newline
 						std::cerr << u8"↩︎";
@@ -263,7 +263,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			{
 				auto const lhs_c(*lhs_it);
 				++lhs_it;
-				if (m_print_utf8)
+				if (m_prints_values_converted_to_utf8)
 				{
 					if (10 == lhs_c) // newline
 						std::cerr << u8"↩︎";
