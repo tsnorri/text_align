@@ -13,6 +13,7 @@
 #include <libbio/int_vector.hh>
 #include <libbio/matrix.hh>
 #include <memory>
+#include <range/v3/all.hpp>
 #include <text_align/smith_waterman/aligner_base.hh>
 #include <text_align/smith_waterman/aligner_data.hh>
 #include <text_align/smith_waterman/aligner_impl.hh>
@@ -67,6 +68,7 @@ namespace text_align { namespace smith_waterman {
 		detail::aligner_data <aligner>						m_data;
 		
 		score_type											m_alignment_score{0};
+		bool												m_reverses_texts{};
 		
 	protected:
 		// Delegate member functions.
@@ -79,8 +81,16 @@ namespace text_align { namespace smith_waterman {
 		inline void did_calculate_score(std::size_t const row, std::size_t const column, score_result_type const &result, bool const initial);
 		inline void push_lhs(bool const flag, std::size_t const count) { this->m_delegate->push_lhs(flag, count); }
 		inline void push_rhs(bool const flag, std::size_t const count) { this->m_delegate->push_rhs(flag, count); }
-		inline void reverse_gaps() { this->m_delegate->reverse_gaps(); }
+		inline void reverse_gaps() { if (!m_reverses_texts) this->m_delegate->reverse_gaps(); }
 		inline void finish(score_type const final_score);
+		
+		template <typename t_lhs, typename t_rhs>
+		void do_align(
+			t_lhs const &lhs,
+			t_rhs const &rhs,
+			std::size_t const segments_along_y,
+			std::size_t const segments_along_x
+		);
 		
 	public:
 		aligner() = default;
@@ -99,8 +109,10 @@ namespace text_align { namespace smith_waterman {
 		score_type gap_penalty() const { return m_parameters.gap_penalty; }
 		std::uint32_t segment_length() const { return m_parameters.segment_length; }
 		bool prints_debugging_information() const { return m_parameters.print_debugging_information; }
+		bool prints_values_converted_to_utf8() const { return m_parameters.prints_values_converted_to_utf8; }
 		std::size_t lhs_size() const { return m_parameters.lhs_length; }
 		std::size_t rhs_size() const { return m_parameters.rhs_length; }
+		bool reverses_texts() const { return m_reverses_texts; }
 		
 		context_type &execution_context() { return *m_ctx; }
 		
@@ -110,6 +122,8 @@ namespace text_align { namespace smith_waterman {
 		void set_gap_penalty(score_type const score) { m_parameters.gap_penalty = score; }
 		virtual void set_segment_length(std::uint32_t const length) { m_parameters.segment_length = length; }
 		virtual void set_prints_debugging_information(bool const should_print) { m_parameters.print_debugging_information = should_print; }
+		void set_prints_values_converted_to_utf8(bool const should_print) { m_parameters.prints_values_converted_to_utf8 = should_print; }
+		void set_reverses_texts(bool const flag) { m_reverses_texts = flag; }
 		
 		template <typename t_lhs, typename t_rhs>
 		void align(t_lhs const &lhs, t_rhs const &rhs);
@@ -211,14 +225,21 @@ namespace text_align { namespace smith_waterman {
 		m_rhs.copy_first_sample_values(m_lhs, m_parameters.segment_length, segments_along_y);
 		
 		// Instantiate the implementation.
-		auto impl_ptr(
-			new detail::aligner_impl <aligner, t_lhs, t_rhs>(
-				*this,
-				lhs,
-				rhs,
-				segments_along_y,
-				segments_along_x
-			)
+		do_align(lhs, rhs, segments_along_y, segments_along_x);
+	}
+	
+	
+	template <typename t_score, typename t_word, typename t_delegate>
+	template <typename t_lhs, typename t_rhs>
+	void aligner <t_score, t_word, t_delegate>::do_align(
+		t_lhs const &lhs,
+		t_rhs const &rhs,
+		std::size_t const segments_along_y,
+		std::size_t const segments_along_x
+	)
+	{
+		auto *impl_ptr(
+			new detail::aligner_impl(*this, lhs, rhs, segments_along_y, segments_along_x)
 		);
 		m_aligner_impl.reset(impl_ptr); // noexcept.
 		

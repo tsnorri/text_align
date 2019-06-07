@@ -9,6 +9,7 @@
 
 #include <iostream>
 #include <libbio/int_vector.hh>
+#include <text_align/alignment_graph_builder.hh>
 #include <text_align/code_point_iterator.hh>
 #include <text_align/smith_waterman/aligner.hh>
 #include <text_align/smith_waterman/alignment_context.hh>
@@ -30,7 +31,7 @@ using alignment_context_type = text_align::smith_waterman::alignment_context <sc
 template <typename t_range>
 std::size_t copy_distance(t_range range)
 {
-	return boost::distance(range);
+	return ranges::distance(range);
 }
 
 template <typename t_block>
@@ -55,9 +56,10 @@ void run_aligner(
 	aligner.set_mismatch_penalty(mismatch_penalty);
 	aligner.set_gap_start_penalty(gap_start_penalty);
 	aligner.set_gap_penalty(gap_penalty);
-	
-	auto const lhsr(ta::make_code_point_iterator_range(lhs.cbegin(), lhs.cend()));
-	auto const rhsr(ta::make_code_point_iterator_range(rhs.cbegin(), rhs.cend()));
+	aligner.set_reverses_texts(true);
+
+	auto const lhsr(ta::make_reversed_code_point_range(ranges::view::reverse(lhs)));
+	auto const rhsr(ta::make_reversed_code_point_range(ranges::view::reverse(rhs)));
 	auto const lhs_len(copy_distance(lhsr));
 	auto const rhs_len(copy_distance(rhsr));
 	assert(lhsr.begin() != lhsr.end());
@@ -92,7 +94,7 @@ BOOST_AUTO_TEST_CASE(test_aligner_1)
 	
 	bit_vector const lhs(5, 0x0);
 	bit_vector rhs(5, 0x0);
-	*rhs.word_begin() = 0x2;
+	*rhs.word_begin() = 0x4;
 	alignment_context ctx;
 	run_aligner(ctx, "xaasd", "xasd", lhs, rhs, 4, 8, 2, -2, -2, -1);
 }
@@ -105,7 +107,7 @@ BOOST_AUTO_TEST_CASE(test_aligner_2_32)
 	
 	bit_vector const lhs(10, 0x0);
 	bit_vector rhs(10, 0x0);
-	*rhs.word_begin() = 0x42;
+	*rhs.word_begin() = 0x84;
 	alignment_context ctx;
 	run_aligner(ctx, "xaasdxaasd", "xasdxasd", lhs, rhs, 8, 16, 2, -2, -2, -1);
 }
@@ -118,7 +120,7 @@ BOOST_AUTO_TEST_CASE(test_aligner_2_16)
 	
 	bit_vector const lhs(10, 0x0);
 	bit_vector rhs(10, 0x0);
-	*rhs.word_begin() = 0x42;
+	*rhs.word_begin() = 0x84;
 	alignment_context ctx;
 	run_aligner(ctx, "xaasdxaasd", "xasdxasd", lhs, rhs, 8, 8, 2, -2, -2, -1);
 }
@@ -131,7 +133,26 @@ BOOST_AUTO_TEST_CASE(test_aligner_2_8)
 	
 	bit_vector const lhs(10, 0x0);
 	bit_vector rhs(10, 0x0);
-	*rhs.word_begin() = 0x42;
+	*rhs.word_begin() = 0x84;
 	alignment_context ctx;
 	run_aligner(ctx, "xaasdxaasd", "xasdxasd", lhs, rhs, 8, 4, 2, -2, -2, -1);
+}
+
+
+BOOST_AUTO_TEST_CASE(test_aligner_2_8_graph)
+{
+	typedef alignment_context_type <std::uint16_t> alignment_context;
+	typedef typename alignment_context::bit_vector_type bit_vector;
+	
+	bit_vector const lhs(10, 0x0);
+	bit_vector rhs(10, 0x0);
+	*rhs.word_begin() = 0x84;
+	alignment_context ctx;
+	
+	auto const lhss("xaasdxaasd");
+	auto const rhss("xasdxasd");
+	run_aligner(ctx, lhss, rhss, lhs, rhs, 8, 4, 2, -2, -2, -1);
+	
+	ta::alignment_graph_builder <char32_t> builder;
+	builder.build_graph(std::string(lhss), std::string(rhss), ctx.lhs_gaps(), ctx.rhs_gaps());
 }

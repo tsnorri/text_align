@@ -24,6 +24,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		std::size_t		rhs_segments{0};
 		std::uint32_t	segment_length{0};
 		bool			print_debugging_information{false};
+		bool			prints_values_converted_to_utf8{true};
 	};
 }}}
 

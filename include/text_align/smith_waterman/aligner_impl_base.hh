@@ -63,18 +63,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		{
 		}
 		
-		inline bool find_gap_start_x(
-			std::size_t &j,
-			std::size_t &i,
-			std::size_t &steps
-		) const;
-	
-		inline bool find_gap_start_y(
-			std::size_t &j,
-			std::size_t &i,
-			std::size_t &steps
-		) const;
-
+		virtual ~aligner_impl_base() {}
+		virtual void align_block(std::size_t const lhs_block_idx, std::size_t const rhs_block_idx) = 0;
 		score_type block_score() const { return m_block_score; }
 
 	protected:
@@ -91,51 +81,6 @@ namespace text_align { namespace smith_waterman { namespace detail {
 	{
 		this->m_owner->did_calculate_score(j, i, result, initial);
 	}
-	
-	
-	template <typename t_owner>
-	bool aligner_impl_base <t_owner>::find_gap_start_x(
-		std::size_t &j,
-		std::size_t &i,
-		std::size_t &steps
-	) const
-	{
-		gap_start_position_type gsp{};
-		while (true)
-		{
-			++steps;
-			if (0 == i)
-				return false;
-			
-			--i;
-			gsp = static_cast <gap_start_position_type>(m_data->gap_start_positions.load(j, i));
-			if (0 != (gap_start_position_type::GSP_RIGHT & gsp))
-				return true;
-		}
-	}
-	
-	
-	template <typename t_owner>
-	bool aligner_impl_base <t_owner>::find_gap_start_y(
-		std::size_t &j,
-		std::size_t &i,
-		std::size_t &steps
-	) const
-	{
-		gap_start_position_type gsp{};
-		while (true)
-		{
-			++steps;
-			if (0 == j)
-				return false;
-			
-			--j;
-			gsp = static_cast <gap_start_position_type>(m_data->gap_start_positions.load(j, i));
-			if (0 != (gap_start_position_type::GSP_DOWN & gsp))
-				return true;
-		}
-	}
 }}}
 
 #endif
-

@@ -27,7 +27,12 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		typedef typename superclass::score_vector				score_vector;
 		typedef typename superclass::score_matrix				score_matrix;
 		typedef typename superclass::score_result_type			score_result_type;
-
+		
+		typedef decltype(std::declval <t_lhs>().begin())		lhs_const_iterator;
+		typedef decltype(std::declval <t_rhs>().begin())		rhs_const_iterator;
+		static_assert(!std::is_same_v <void, lhs_const_iterator>);
+		static_assert(!std::is_same_v <void, rhs_const_iterator>);
+		
 		enum find_gap_type : std::uint8_t
 		{
 			UNSET	= 0x0,
@@ -47,8 +52,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		};
 		
 	protected:
-		std::vector <typename t_lhs::const_iterator> m_lhs_iterators;
-		std::vector <typename t_rhs::const_iterator> m_rhs_iterators;
+		std::vector <lhs_const_iterator> m_lhs_iterators;
+		std::vector <rhs_const_iterator> m_rhs_iterators;
 		t_lhs const	*m_lhs_text{nullptr};
 		t_rhs const	*m_rhs_text{nullptr};
 	
@@ -71,9 +76,29 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			m_rhs_iterators[0] = m_rhs_text->begin();
 		}
 		
-		void align_block(std::size_t const lhs_block_idx, std::size_t const rhs_block_idx);
+		void align_block(std::size_t const lhs_block_idx, std::size_t const rhs_block_idx) override;
 		
 	protected:
+		inline bool can_continue_in_direction(
+			std::size_t const j,
+			std::size_t const i,
+			gap_start_position_type const given_gsp
+		) const;
+		
+		template <bool t_continue>
+		inline bool find_gap_start_x(
+			std::size_t &j,
+			std::size_t &i,
+			std::size_t &steps
+		) const;
+		
+		template <bool t_continue>
+		inline bool find_gap_start_y(
+			std::size_t &j,
+			std::size_t &i,
+			std::size_t &steps
+		) const;
+		
 		inline void copy_to_score_buffer(
 			score_vector const &src,
 			std::size_t const column_idx,
@@ -105,7 +130,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			score_result_type &result,					// Out
 			score_type &gap_score_rhs					// Out
 		);
-			
+		
 		inline void update_lhs_samples(std::size_t const row_idx, std::size_t const block_idx, score_result_type const &result);
 		inline void update_rhs_samples(std::size_t const column_idx, std::size_t const block_idx, score_result_type const &result);
 		
@@ -115,11 +140,11 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			std::size_t const rhs_block_idx,
 			score_matrix *output_score_buffer = nullptr
 		);
-			
+		
 		void fill_traceback();
 	};
-		
-		
+	
+	
 	template <typename t_owner, typename t_lhs, typename t_rhs>
 	void aligner_impl <t_owner, t_lhs, t_rhs>::copy_to_score_buffer(
 		score_vector const &src,
@@ -212,8 +237,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			result.did_start_gap |= gap_start_position_type::GSP_DOWN;
 		}
 	}
-		
-		
+	
+	
 	template <typename t_owner, typename t_lhs, typename t_rhs>
 	template <bool t_initial, typename t_iterator, typename t_rhs_c>
 	void aligner_impl <t_owner, t_lhs, t_rhs>::calculate_score_and_update_gap_scores(
@@ -431,6 +456,72 @@ namespace text_align { namespace smith_waterman { namespace detail {
 	
 	
 	template <typename t_owner, typename t_lhs, typename t_rhs>
+	bool aligner_impl <t_owner, t_lhs, t_rhs>::can_continue_in_direction(
+		std::size_t const j,
+		std::size_t const i,
+		gap_start_position_type const given_gsp
+	) const
+	{
+		auto const gsp(static_cast <gap_start_position_type>(this->m_data->gap_start_positions.load(j, i)));
+		return (0 != (given_gsp & gsp));
+	}
+	
+	
+	template <typename t_owner, typename t_lhs, typename t_rhs>
+	template <bool t_continue>
+	bool aligner_impl <t_owner, t_lhs, t_rhs>::find_gap_start_x(
+		std::size_t &j,
+		std::size_t &i,
+		std::size_t &steps
+	) const
+	{
+		if constexpr (t_continue)
+		{
+			if (can_continue_in_direction(j, i, gap_start_position_type::GSP_RIGHT))
+				return true;
+		}
+		
+		while (true)
+		{
+			++steps;
+			if (0 == i)
+				return false;
+			
+			--i;
+			if (can_continue_in_direction(j, i, gap_start_position_type::GSP_RIGHT))
+				return true;
+		}
+	}
+	
+	
+	template <typename t_owner, typename t_lhs, typename t_rhs>
+	template <bool t_continue>
+	bool aligner_impl <t_owner, t_lhs, t_rhs>::find_gap_start_y(
+		std::size_t &j,
+		std::size_t &i,
+		std::size_t &steps
+	) const
+	{
+		if constexpr (t_continue)
+		{
+			if (can_continue_in_direction(j, i, gap_start_position_type::GSP_DOWN))
+				return true;
+		}
+		
+		while (true)
+		{
+			++steps;
+			if (0 == j)
+				return false;
+			
+			--j;
+			if (can_continue_in_direction(j, i, gap_start_position_type::GSP_DOWN))
+				return true;
+		}
+	}
+	
+	
+	template <typename t_owner, typename t_lhs, typename t_rhs>
 	void aligner_impl <t_owner, t_lhs, t_rhs>::fill_traceback()
 	{
 		arrow_type dir{};
@@ -439,7 +530,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		auto const seg_len(this->m_owner->segment_length());
 		auto const lhs_len(this->m_owner->lhs_size());
 		auto const rhs_len(this->m_owner->rhs_size());
-		auto const print_debugging_information(this->m_owner->prints_debugging_information());
+		auto const prints_debugging_information(this->m_owner->prints_debugging_information());
+		auto const prints_values_converted_to_utf8(this->m_owner->prints_values_converted_to_utf8());
 		
 		auto &traceback(this->m_data->traceback);
 		auto &gap_start_positions(this->m_data->gap_start_positions);
@@ -465,7 +557,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		auto prev_i(i);
 		std::uint8_t mode(0);
 		
-		if (print_debugging_information)
+		if (prints_debugging_information)
 		{
 			score_buffer.resize(traceback.number_of_rows(), traceback.number_of_columns());
 			score_buffer_ptr = &score_buffer;
@@ -483,7 +575,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			{
 				auto const lhs_limit(libbio::min_ct(1 + lhs_len, seg_len * (1 + lhs_block_idx)));
 				auto const rhs_limit(libbio::min_ct(1 + rhs_len, seg_len * (1 + rhs_block_idx)));
-			
+				
 				libbio::matrices::copy_to_word_aligned(
 					this->m_lhs->traceback_samples.column(rhs_block_idx, lhs_first, lhs_limit),
 					traceback.column(0)
@@ -500,7 +592,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			// The first row and column are now filled, run the filling algorithm.
 			std::fill(score_buffer.begin(), score_buffer.end(), 0);
 			fill_block <false>(lhs_block_idx, rhs_block_idx, score_buffer_ptr);
-
+			
 			// If this is the last block, check that the corner is marked.
 			libbio_assert((! (0 == lhs_block_idx && 0 == rhs_block_idx)) || traceback(0, 0) == arrow_type::ARROW_FINISH);
 			
@@ -511,7 +603,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				{
 					case find_gap_type::LEFT:
 					{
-						bool const res(this->find_gap_start_x(j, i, steps));
+						bool const res(find_gap_start_x <true>(j, i, steps));
 						this->push_lhs(1, steps);
 						this->push_rhs(0, steps);
 						if (!res)
@@ -523,10 +615,10 @@ namespace text_align { namespace smith_waterman { namespace detail {
 						}
 						break;
 					}
-				
+					
 					case find_gap_type::UP:
 					{
-						bool const res(this->find_gap_start_y(j, i, steps));
+						bool const res(find_gap_start_y <true>(j, i, steps));
 						this->push_lhs(0, steps);
 						this->push_rhs(1, steps);
 						if (!res)
@@ -598,7 +690,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 					case arrow_type::ARROW_LEFT:
 					{
 						// Move left as long as possible and to the adjacent block if needed.
-						bool const res(this->find_gap_start_x(j, i, steps));
+						bool const res(this->find_gap_start_x <false>(j, i, steps));
 						this->push_lhs(1, steps);
 						this->push_rhs(0, steps);
 						if (!res)
@@ -616,7 +708,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 					case arrow_type::ARROW_UP:
 					{
 						// Move up as long as possible and to the adjacent block if needed.
-						bool const res(this->find_gap_start_y(j, i, steps));
+						bool const res(this->find_gap_start_y <false>(j, i, steps));
 						this->push_lhs(0, steps);
 						this->push_rhs(1, steps);
 						if (!res)
@@ -641,7 +733,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			}
 			
 		continue_loop:
-			if (print_debugging_information)
+			if (prints_debugging_information)
 			{
 				matrix_printer printer(
 					prev_j,
@@ -649,7 +741,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 					j_limit,
 					i_limit,
 					m_lhs_text->begin(),
-					m_rhs_text->begin()
+					m_rhs_text->begin(),
+					prints_values_converted_to_utf8
 				);
 				
 				printer.set_lhs_offset(lhs_first - 1);
@@ -668,7 +761,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		}
 		
 	exit_loop:
-		if (print_debugging_information)
+		if (prints_debugging_information)
 		{
 			matrix_printer printer(
 				prev_j,
@@ -676,7 +769,8 @@ namespace text_align { namespace smith_waterman { namespace detail {
 				j_limit,
 				i_limit,
 				m_lhs_text->begin(),
-				m_rhs_text->begin()
+				m_rhs_text->begin(),
+				prints_values_converted_to_utf8
 			);
 
 			printer.set_padding(1);
@@ -686,7 +780,7 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			printer.print_traceback(traceback);
 			std::cerr << '\n';
 		}
-
+		
 		// Reverse the paths.
 		this->reverse_gaps();
 	}
