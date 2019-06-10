@@ -96,7 +96,7 @@ BOOST_AUTO_TEST_CASE(test_aligner_1)
 	bit_vector rhs(5, 0x0);
 	*rhs.word_begin() = 0x4;
 	alignment_context ctx;
-	run_aligner(ctx, "xaasd", "xasd", lhs, rhs, 4, 8, 2, -2, -2, -1);
+	run_aligner(ctx, "xaasd", "xasd", lhs, rhs, 5, 8, 2, -2, -2, -1);
 }
 
 
@@ -109,7 +109,7 @@ BOOST_AUTO_TEST_CASE(test_aligner_2_32)
 	bit_vector rhs(10, 0x0);
 	*rhs.word_begin() = 0x84;
 	alignment_context ctx;
-	run_aligner(ctx, "xaasdxaasd", "xasdxasd", lhs, rhs, 8, 16, 2, -2, -2, -1);
+	run_aligner(ctx, "xaasdxaasd", "xasdxasd", lhs, rhs, 10, 16, 2, -2, -2, -1);
 }
 
 
@@ -122,7 +122,7 @@ BOOST_AUTO_TEST_CASE(test_aligner_2_16)
 	bit_vector rhs(10, 0x0);
 	*rhs.word_begin() = 0x84;
 	alignment_context ctx;
-	run_aligner(ctx, "xaasdxaasd", "xasdxasd", lhs, rhs, 8, 8, 2, -2, -2, -1);
+	run_aligner(ctx, "xaasdxaasd", "xasdxasd", lhs, rhs, 10, 8, 2, -2, -2, -1);
 }
 
 
@@ -135,7 +135,7 @@ BOOST_AUTO_TEST_CASE(test_aligner_2_8)
 	bit_vector rhs(10, 0x0);
 	*rhs.word_begin() = 0x84;
 	alignment_context ctx;
-	run_aligner(ctx, "xaasdxaasd", "xasdxasd", lhs, rhs, 8, 4, 2, -2, -2, -1);
+	run_aligner(ctx, "xaasdxaasd", "xasdxasd", lhs, rhs, 10, 4, 2, -2, -2, -1);
 }
 
 
@@ -151,7 +151,7 @@ BOOST_AUTO_TEST_CASE(test_aligner_2_8_graph)
 	
 	auto const lhss("xaasdxaasd");
 	auto const rhss("xasdxasd");
-	run_aligner(ctx, lhss, rhss, lhs, rhs, 8, 4, 2, -2, -2, -1);
+	run_aligner(ctx, lhss, rhss, lhs, rhs, 10, 4, 2, -2, -2, -1);
 	
 	ta::alignment_graph_builder <char32_t> builder;
 	builder.build_graph(std::string(lhss), std::string(rhss), ctx.lhs_gaps(), ctx.rhs_gaps());
