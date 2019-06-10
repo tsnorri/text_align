@@ -102,8 +102,9 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		std::fill(gap_score_samples.begin(), gap_score_samples.end(), 0);
 		
 		// Fill the first vectors with gap scores.
+		// For gap_score_samples, gap_start_penalty is added in the score calculation function.
 		fill_gap_scores(score_samples.column(0), gap_penalty, gap_start_penalty);
-		fill_gap_scores(gap_score_samples.column(0), gap_penalty, gap_start_penalty);
+		fill_gap_scores(gap_score_samples.column(0), gap_penalty, 0);
 		
 		// Initialize the traceback samples.
 		{

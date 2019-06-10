@@ -14,6 +14,9 @@
 namespace std { using ::std::experimental::is_detected_v; }
 
 
+#define OUTPUT_STEPS false
+
+
 namespace text_align { namespace smith_waterman { namespace detail {
 	
 	template <typename t_owner, typename t_lhs, typename t_rhs>
@@ -203,16 +206,19 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		auto const gap_penalty(this->m_parameters->gap_penalty);
 		auto const gap_start_penalty(this->m_parameters->gap_start_penalty);
 		
-		// Update the existing gap score s.t. the gap would continue here.
-		gap_score_lhs += gap_penalty;
-		gap_score_rhs += gap_penalty;
+		if constexpr (OUTPUT_STEPS)
+			std::cerr << " lhs_c: " << (char) lhs_c << " rhs_c: " << (char) rhs_c << " p1: " << prev_diag_score << "\tp2: " << (gap_start_penalty + gap_score_lhs) << "\tp3: " << (gap_start_penalty + gap_score_rhs);
 		
+		// gap_score_lhs and gap_score_rhs already have taken gap_penalty into account.
 		auto const s1(prev_diag_score + score_pair(lhs_c, rhs_c));
 		auto const s2(gap_score_lhs);	// Lhs string
 		auto const s3(gap_score_rhs);	// Rhs string
 		
+		if constexpr (OUTPUT_STEPS)
+			std::cerr << "\ts1: " << s1 << "\ts2: " << (gap_start_penalty + s2) << "\ts3: " << (gap_start_penalty + s3) << '\n';
+		
 		// Take gap_start_penalty into account when choosing the maximum element and saving the score.
-		// When caching the value, don't add gap_start_penalty.
+		// When caching the value, don't add gap_start_penalty. Add gap_penalty, though.
 		auto const scores(libbio::make_array <score_type>(s1, gap_start_penalty + s2, gap_start_penalty + s3));
 		result.max_idx = libbio::argmax_element(scores.begin(), scores.end());
 		libbio_assert(result.max_idx < scores.size());
@@ -251,6 +257,9 @@ namespace text_align { namespace smith_waterman { namespace detail {
 		score_type &gap_score_rhs					// Out
 	)
 	{
+		if constexpr (OUTPUT_STEPS)
+			std::cerr << "row: " << row_idx << " col: " << column_idx;
+		
 		libbio_assert(lhs_it != m_lhs_text->end());
 		auto const lhs_c(*lhs_it);
 		auto const prev_diag_score((*src_buffer_ptr)[row_idx]);
@@ -452,6 +461,9 @@ namespace text_align { namespace smith_waterman { namespace detail {
 			// Update the score.
 			this->m_block_score = result.score;
 		}
+		
+		if constexpr (OUTPUT_STEPS)
+			std::cerr << "=====\n";
 	}
 	
 	
