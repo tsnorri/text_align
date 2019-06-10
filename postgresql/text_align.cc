@@ -104,8 +104,8 @@ extern "C" {
 			std::string_view lhsv, rhsv;
 			make_string_view(lhs, lhsv);
 			make_string_view(rhs, rhsv);
-			auto const lhsr(ta::make_reversed_code_point_range(lhsv));
-			auto const rhsr(ta::make_reversed_code_point_range(rhsv));
+			auto const lhsr(ta::make_reversed_code_point_range(ranges::view::reverse(lhsv)));
+			auto const rhsr(ta::make_reversed_code_point_range(ranges::view::reverse(rhsv)));
 			auto const lhs_len(copy_distance(lhsr));
 			auto const rhs_len(copy_distance(rhsr));
 			
