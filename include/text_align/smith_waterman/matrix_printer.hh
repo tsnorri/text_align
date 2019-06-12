@@ -326,6 +326,9 @@ namespace text_align { namespace smith_waterman { namespace detail {
 							break;
 							
 						case arrow_type::ARROW_FINISH:
+							std::cerr << u8"*"; // Should not happen.
+							break;
+							
 						default:
 							libbio_fail("Unexpected traceback value");
 							break;
