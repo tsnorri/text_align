@@ -76,8 +76,8 @@ cdef class Aligner(object):
 		if 0 < len_diff:
 			len_diff_penalty = self.gap_start_penalty + len_diff * self.gap_penalty
 		
-		# Determine the maximum score. This is the case when all characters match with max_similarity.
-		max_score = float(max_similarity * min_len + len_diff_penalty)
+		# Determine the maximum score by considering the case where the strings would have equal length.
+		max_score = float(max_similarity * max_len)
 		
 		# Determine the minimum score.
 		min_score = float(max(
