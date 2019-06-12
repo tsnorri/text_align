@@ -223,7 +223,7 @@ struct string_view_from_input
 		}
 		else
 		{
-			libbio::mmap_handle handle;
+			libbio::mmap_handle <char> handle;
 			handle.open(path_arg);
 			std::string_view view(handle.data(), handle.size());
 			fn(view);
