@@ -12,7 +12,7 @@ all: $(LIBBIO_A)
 clean:
 	$(MAKE) -C libtextalign clean
 	$(MAKE) -C command_line_aligner clean
-	$(MAKE) -C postgresql clean
+	-$(MAKE) -C postgresql clean
 	$(MAKE) -C python clean
 	$(MAKE) -C unit_tests clean
 
