@@ -1,0 +1,7 @@
+PYTHON		= python3.5m
+CC			= gcc-8
+CXX			= g++-8
+CPPFLAGS	= -DLIBBIO_NO_PROGRESS_INDICATOR
+
+BOOST_ROOT	= /usr
+LIBRARIES	= pthread

@@ -1,7 +1,9 @@
 include ../local.mk
 include ../common.mk
 
-OBJECTS = 	alignment_graph_builder.o
+OBJECTS		=	alignment_graph_builder.o
+CFLAGS		+=	-fPIC
+CXXFLAGS	+=	-fPIC
 
 
 all: libtextalign.a

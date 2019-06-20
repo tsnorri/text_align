@@ -16,8 +16,14 @@ PYTHON_CFLAGS	?=
 PYTHON_CXXFLAGS	?=
 PYTHON_LDFLAGS	?=
 
-INCLUDE_DIRS	+= ../include ../lib/libbio/include ../lib/libbio/lib/range-v3/include ../lib/libbio/lib/GSL/include
-LIBRARIES		+= boost_system-mt
+BOOST_LIBRARY_SUFFIX	?=
+BOOST_ROOT		?= /usr
+BOOST_INCLUDE	= $(BOOST_ROOT)/include
+BOOST_LIB		= $(BOOST_ROOT)/lib
+LIB_DIRS		+= $(BOOST_LIB)
+
+INCLUDE_DIRS	+= ../include ../lib/libbio/include ../lib/libbio/lib/range-v3/include ../lib/libbio/lib/GSL/include $(BOOST_INCLUDE)
+LIBRARIES		+= boost_system$(BOOST_LIBRARY_SUFFIX)
 
 CPPFLAGS		+= $(patsubst %,-I%,$(strip $(INCLUDE_DIRS)))
 CFLAGS			+= $(WARNING_FLAGS) $(OPT_FLAGS) $(SYSTEM_CFLAGS) -std=c99

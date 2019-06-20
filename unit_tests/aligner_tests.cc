@@ -4,7 +4,11 @@
  */
 
 #define BOOST_TEST_MODULE "Unit tests"
-#define BOOST_TEST_DYN_LINK
+// For some reason BOOST_TEST_DYN_LINK is required on macOS
+// but cannot be applied on Linux.
+#ifdef __APPLE__
+#	define BOOST_TEST_DYN_LINK
+#endif
 #include <boost/test/unit_test.hpp>
 
 #include <iostream>

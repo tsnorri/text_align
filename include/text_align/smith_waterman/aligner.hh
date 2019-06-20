@@ -238,8 +238,10 @@ namespace text_align { namespace smith_waterman {
 		std::size_t const segments_along_x
 	)
 	{
+		// g++ 8 cannot deduce the argument types; give them explicitly.
+		typedef std::remove_reference_t <decltype(*this)> owner_type;
 		auto *impl_ptr(
-			new detail::aligner_impl(*this, lhs, rhs, segments_along_y, segments_along_x)
+			new detail::aligner_impl <owner_type, t_lhs, t_rhs>(*this, lhs, rhs, segments_along_y, segments_along_x)
 		);
 		m_aligner_impl.reset(impl_ptr); // noexcept.
 		
