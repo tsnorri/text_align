@@ -10,9 +10,10 @@ At this point, the library should be considered experimental.
 
 ### C++ Library
 
-- Compiler that supports C++17, e.g. GCC 7 or Clang 6
-- Boost (tested with version 1.67)
+- Compiler that supports C++17, e.g. GCC 8 or Clang 7
+- Boost (tested with version 1.68)
 - To build the provided command line tool, GNU Gengetopt is also required.
+- The supporting library, libbio, requires Ragel at compile time.
 
 ### Python Extension
 
